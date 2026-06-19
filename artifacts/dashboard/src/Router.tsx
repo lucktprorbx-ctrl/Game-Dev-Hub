@@ -8,6 +8,8 @@ import GameDetail from '@/pages/games/[id]';
 import Revenue from '@/pages/revenue';
 import Users from '@/pages/users';
 import Planning from '@/pages/planning';
+import Privacy from '@/pages/privacy';
+import Terms from '@/pages/terms';
 
 function ProtectedRoute({ component: Component, adminOnly = false, ...rest }: any) {
   const { isAuthenticated, user, isLoading } = useAuth();
@@ -33,6 +35,8 @@ export function AppRouter() {
   return (
     <Switch>
       <Route path="/login" component={Login} />
+      <Route path="/privacy" component={Privacy} />
+      <Route path="/terms" component={Terms} />
       
       {/* Protected Admin Routes */}
       <Route path="/">
