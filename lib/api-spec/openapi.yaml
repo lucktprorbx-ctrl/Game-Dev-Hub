@@ -1,22 +1,29 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: RoVerse Dashboard API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: games
+    description: Roblox game management
+  - name: users
+    description: User management
+  - name: planning
+    description: Collaborative planning
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +31,953 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Not authenticated
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout current user
+      responses:
+        "200":
+          description: Logged out
+
+  /games:
+    get:
+      operationId: listGames
+      tags: [games]
+      summary: List all linked Roblox games
+      responses:
+        "200":
+          description: List of games
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Game"
+
+    post:
+      operationId: createGame
+      tags: [games]
+      summary: Link a Roblox game
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GameInput"
+      responses:
+        "201":
+          description: Game linked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Game"
+
+  /games/{id}:
+    get:
+      operationId: getGame
+      tags: [games]
+      summary: Get a specific game
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Game details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Game"
+        "404":
+          description: Not found
+
+    patch:
+      operationId: updateGame
+      tags: [games]
+      summary: Update a game
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GameUpdate"
+      responses:
+        "200":
+          description: Updated game
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Game"
+
+    delete:
+      operationId: deleteGame
+      tags: [games]
+      summary: Unlink a game
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /games/{id}/stats:
+    get:
+      operationId: getGameStats
+      tags: [games]
+      summary: Get real-time stats for a game (CCU, revenue)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Game stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameStats"
+
+  /games/dashboard-summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [games]
+      summary: Get aggregated stats across all games
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /games/revenue-tracker:
+    get:
+      operationId: getRevenueTracker
+      tags: [games]
+      summary: Revenue tracking with monthly estimates per game
+      responses:
+        "200":
+          description: Revenue tracker data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RevenueTrackerEntry"
+
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List all platform users
+      responses:
+        "200":
+          description: Users list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Add a user manually
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserInput"
+      responses:
+        "201":
+          description: Created user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/{id}:
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get user by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: Not found
+
+    patch:
+      operationId: updateUser
+      tags: [users]
+      summary: Update user role, subroles, or groups
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Remove a user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /planning/boards:
+    get:
+      operationId: listBoards
+      tags: [planning]
+      summary: List all planning boards
+      responses:
+        "200":
+          description: Boards list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Board"
+
+    post:
+      operationId: createBoard
+      tags: [planning]
+      summary: Create a new board
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BoardInput"
+      responses:
+        "201":
+          description: Created board
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Board"
+
+  /planning/boards/{id}:
+    get:
+      operationId: getBoard
+      tags: [planning]
+      summary: Get a board with its columns and tasks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Board with columns and tasks
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BoardDetail"
+
+    patch:
+      operationId: updateBoard
+      tags: [planning]
+      summary: Update a board
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BoardUpdate"
+      responses:
+        "200":
+          description: Updated board
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Board"
+
+    delete:
+      operationId: deleteBoard
+      tags: [planning]
+      summary: Delete a board
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /planning/tasks:
+    get:
+      operationId: listTasks
+      tags: [planning]
+      summary: List tasks, optionally filtered by board
+      parameters:
+        - name: boardId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Tasks list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+
+    post:
+      operationId: createTask
+      tags: [planning]
+      summary: Create a new task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskInput"
+      responses:
+        "201":
+          description: Created task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
+  /planning/tasks/{id}:
+    get:
+      operationId: getTask
+      tags: [planning]
+      summary: Get a task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
+    patch:
+      operationId: updateTask
+      tags: [planning]
+      summary: Update a task (move column, assign, etc.)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskUpdate"
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
+    delete:
+      operationId: deleteTask
+      tags: [planning]
+      summary: Delete a task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /planning/events:
+    get:
+      operationId: listEvents
+      tags: [planning]
+      summary: List calendar events
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Events list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CalendarEvent"
+
+    post:
+      operationId: createEvent
+      tags: [planning]
+      summary: Create a calendar event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CalendarEventInput"
+      responses:
+        "201":
+          description: Created event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarEvent"
+
+  /planning/events/{id}:
+    patch:
+      operationId: updateEvent
+      tags: [planning]
+      summary: Update a calendar event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CalendarEventUpdate"
+      responses:
+        "200":
+          description: Updated event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarEvent"
+
+    delete:
+      operationId: deleteEvent
+      tags: [planning]
+      summary: Delete a calendar event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    User:
+      type: object
+      required: [id, robloxId, robloxUsername, role, createdAt]
+      properties:
+        id:
+          type: integer
+        robloxId:
+          type: string
+        robloxUsername:
+          type: string
+        robloxDisplayName:
+          type: ["string", "null"]
+        robloxAvatarUrl:
+          type: ["string", "null"]
+        role:
+          type: string
+          enum: [admin, collaborator]
+        subroles:
+          type: array
+          items:
+            type: string
+        groups:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    UserInput:
+      type: object
+      required: [robloxId, role]
+      properties:
+        robloxId:
+          type: string
+        role:
+          type: string
+          enum: [admin, collaborator]
+        subroles:
+          type: array
+          items:
+            type: string
+        groups:
+          type: array
+          items:
+            type: string
+
+    UserUpdate:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [admin, collaborator]
+        subroles:
+          type: array
+          items:
+            type: string
+        groups:
+          type: array
+          items:
+            type: string
+
+    Game:
+      type: object
+      required: [id, robloxGameId, name, createdAt]
+      properties:
+        id:
+          type: integer
+        robloxGameId:
+          type: string
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        thumbnailUrl:
+          type: ["string", "null"]
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    GameInput:
+      type: object
+      required: [robloxGameId, name]
+      properties:
+        robloxGameId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+
+    GameUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        isActive:
+          type: boolean
+
+    GameStats:
+      type: object
+      required: [gameId, ccu, avgDailyRevenue, avgDailyRevenueEur]
+      properties:
+        gameId:
+          type: integer
+        ccu:
+          type: integer
+        peakCcu:
+          type: integer
+        avgDailyRevenue:
+          type: number
+          description: In Robux
+        avgDailyRevenueEur:
+          type: number
+          description: In Euros
+        monthlyEstimateRobux:
+          type: number
+        monthlyEstimateEur:
+          type: number
+        revenuePercentChange:
+          type: number
+        ccuHistory:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimeseriesPoint"
+
+    TimeseriesPoint:
+      type: object
+      required: [timestamp, value]
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        value:
+          type: number
+
+    DashboardSummary:
+      type: object
+      required: [totalGames, totalCcu, totalDailyRevenue, totalDailyRevenueEur, monthlyEstimateRobux, monthlyEstimateEur]
+      properties:
+        totalGames:
+          type: integer
+        totalCcu:
+          type: integer
+        totalDailyRevenue:
+          type: number
+        totalDailyRevenueEur:
+          type: number
+        monthlyEstimateRobux:
+          type: number
+        monthlyEstimateEur:
+          type: number
+        topGame:
+          $ref: "#/components/schemas/Game"
+
+    RevenueTrackerEntry:
+      type: object
+      required: [gameId, gameName, revenuePercentage, monthlyEstimateRobux, monthlyEstimateEur, trend]
+      properties:
+        gameId:
+          type: integer
+        gameName:
+          type: string
+        revenuePercentage:
+          type: number
+          description: Percentage of total revenue
+        monthlyEstimateRobux:
+          type: number
+        monthlyEstimateEur:
+          type: number
+        trend:
+          type: number
+          description: Percentage change vs last month
+
+    Board:
+      type: object
+      required: [id, name, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        color:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+
+    BoardInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        color:
+          type: string
+
+    BoardUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        color:
+          type: ["string", "null"]
+
+    BoardColumn:
+      type: object
+      required: [id, boardId, name, position]
+      properties:
+        id:
+          type: integer
+        boardId:
+          type: integer
+        name:
+          type: string
+        position:
+          type: integer
+
+    BoardDetail:
+      type: object
+      required: [id, name, columns, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        color:
+          type: ["string", "null"]
+        columns:
+          type: array
+          items:
+            $ref: "#/components/schemas/ColumnWithTasks"
+        createdAt:
+          type: string
+          format: date-time
+
+    ColumnWithTasks:
+      type: object
+      required: [id, boardId, name, position, tasks]
+      properties:
+        id:
+          type: integer
+        boardId:
+          type: integer
+        name:
+          type: string
+        position:
+          type: integer
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Task"
+
+    Task:
+      type: object
+      required: [id, boardId, columnId, title, position, createdAt]
+      properties:
+        id:
+          type: integer
+        boardId:
+          type: integer
+        columnId:
+          type: integer
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        assigneeId:
+          type: ["integer", "null"]
+        assigneeUsername:
+          type: ["string", "null"]
+        priority:
+          type: ["string", "null"]
+          enum: [low, medium, high, null]
+        dueDate:
+          type: ["string", "null"]
+          format: date
+        position:
+          type: integer
+        tags:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    TaskInput:
+      type: object
+      required: [boardId, columnId, title]
+      properties:
+        boardId:
+          type: integer
+        columnId:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        assigneeId:
+          type: integer
+        priority:
+          type: string
+          enum: [low, medium, high]
+        dueDate:
+          type: string
+          format: date
+        tags:
+          type: array
+          items:
+            type: string
+
+    TaskUpdate:
+      type: object
+      properties:
+        columnId:
+          type: integer
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        assigneeId:
+          type: ["integer", "null"]
+        priority:
+          type: ["string", "null"]
+          enum: [low, medium, high, null]
+        dueDate:
+          type: ["string", "null"]
+          format: date
+        position:
+          type: integer
+        tags:
+          type: array
+          items:
+            type: string
+
+    CalendarEvent:
+      type: object
+      required: [id, title, startDate, createdAt]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: ["string", "null"]
+          format: date-time
+        color:
+          type: ["string", "null"]
+        assigneeId:
+          type: ["integer", "null"]
+        allDay:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    CalendarEventInput:
+      type: object
+      required: [title, startDate]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        color:
+          type: string
+        assigneeId:
+          type: integer
+        allDay:
+          type: boolean
+
+    CalendarEventUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: ["string", "null"]
+          format: date-time
+        color:
+          type: ["string", "null"]
+        assigneeId:
+          type: ["integer", "null"]
+        allDay:
+          type: boolean
