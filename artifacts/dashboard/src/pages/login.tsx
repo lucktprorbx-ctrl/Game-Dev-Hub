@@ -1,8 +1,8 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { Redirect } from 'wouter';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Gamepad2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { SiRoblox } from 'react-icons/si';
 import { PageTransition } from '@/components/ui/page-transition';
 
 export default function Login() {
@@ -28,12 +28,9 @@ export default function Login() {
       <Card className="w-[400px] border-border bg-card/50 backdrop-blur-xl relative z-10">
         <CardHeader className="text-center pb-8 pt-10">
           <div className="mx-auto w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-6">
-            <Gamepad2 className="w-8 h-8 text-primary" />
+            <SiRoblox className="w-8 h-8 text-primary" />
           </div>
-          <CardTitle className="text-3xl font-bold tracking-tight">RoVerse<span className="text-primary">FR</span></CardTitle>
-          <CardDescription className="text-base mt-2">
-            Studio Operations Hub
-          </CardDescription>
+          <CardTitle className="text-3xl font-bold tracking-tight">Login Page</CardTitle>
         </CardHeader>
         <CardContent className="pb-10 px-8">
           <Button 
