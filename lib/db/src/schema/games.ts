@@ -7,6 +7,8 @@ export const gamesTable = pgTable("games", {
   robloxGameId: text("roblox_game_id").notNull().unique(),
   name: text("name").notNull(),
   description: text("description"),
+  gameLink: text("game_link"),
+  groupLink: text("group_link"),
   thumbnailUrl: text("thumbnail_url"),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").defaultNow().notNull(),

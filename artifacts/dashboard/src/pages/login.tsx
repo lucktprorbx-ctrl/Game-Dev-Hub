@@ -30,7 +30,7 @@ export default function Login() {
           <div className="mx-auto w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-6">
             <SiRoblox className="w-8 h-8 text-primary" />
           </div>
-          <CardTitle className="text-3xl font-bold tracking-tight">Login Page</CardTitle>
+          <CardTitle className="text-3xl font-bold tracking-tight">Ro<span className="text-primary">Check</span></CardTitle>
         </CardHeader>
         <CardContent className="pb-10 px-8">
           <Button 

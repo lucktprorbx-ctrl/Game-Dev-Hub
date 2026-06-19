@@ -40,6 +40,8 @@ export const ListGamesResponseItem = zod.object({
   "robloxGameId": zod.string(),
   "name": zod.string(),
   "description": zod.string().nullish(),
+  "gameLink": zod.string().nullish(),
+  "groupLink": zod.string().nullish(),
   "thumbnailUrl": zod.string().nullish(),
   "isActive": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
@@ -53,7 +55,9 @@ export const ListGamesResponse = zod.array(ListGamesResponseItem)
 export const CreateGameBody = zod.object({
   "robloxGameId": zod.string(),
   "name": zod.string(),
-  "description": zod.string().optional()
+  "description": zod.string().optional(),
+  "gameLink": zod.string().optional(),
+  "groupLink": zod.string().optional()
 })
 
 
@@ -69,6 +73,8 @@ export const GetGameResponse = zod.object({
   "robloxGameId": zod.string(),
   "name": zod.string(),
   "description": zod.string().nullish(),
+  "gameLink": zod.string().nullish(),
+  "groupLink": zod.string().nullish(),
   "thumbnailUrl": zod.string().nullish(),
   "isActive": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
@@ -85,6 +91,8 @@ export const UpdateGameParams = zod.object({
 export const UpdateGameBody = zod.object({
   "name": zod.string().optional(),
   "description": zod.string().nullish(),
+  "gameLink": zod.string().nullish(),
+  "groupLink": zod.string().nullish(),
   "isActive": zod.boolean().optional()
 })
 
@@ -93,6 +101,8 @@ export const UpdateGameResponse = zod.object({
   "robloxGameId": zod.string(),
   "name": zod.string(),
   "description": zod.string().nullish(),
+  "gameLink": zod.string().nullish(),
+  "groupLink": zod.string().nullish(),
   "thumbnailUrl": zod.string().nullish(),
   "isActive": zod.boolean().optional(),
   "createdAt": zod.coerce.date()
@@ -145,6 +155,8 @@ export const GetDashboardSummaryResponse = zod.object({
   "robloxGameId": zod.string(),
   "name": zod.string(),
   "description": zod.string().nullish(),
+  "gameLink": zod.string().nullish(),
+  "groupLink": zod.string().nullish(),
   "thumbnailUrl": zod.string().nullish(),
   "isActive": zod.boolean().optional(),
   "createdAt": zod.coerce.date()

@@ -67,6 +67,10 @@ export interface Game {
   /** @nullable */
   description?: string | null;
   /** @nullable */
+  gameLink?: string | null;
+  /** @nullable */
+  groupLink?: string | null;
+  /** @nullable */
   thumbnailUrl?: string | null;
   isActive?: boolean;
   createdAt: string;
@@ -76,12 +80,18 @@ export interface GameInput {
   robloxGameId: string;
   name: string;
   description?: string;
+  gameLink?: string;
+  groupLink?: string;
 }
 
 export interface GameUpdate {
   name?: string;
   /** @nullable */
   description?: string | null;
+  /** @nullable */
+  gameLink?: string | null;
+  /** @nullable */
+  groupLink?: string | null;
   isActive?: boolean;
 }
 

@@ -641,6 +641,10 @@ components:
           type: string
         description:
           type: ["string", "null"]
+        gameLink:
+          type: ["string", "null"]
+        groupLink:
+          type: ["string", "null"]
         thumbnailUrl:
           type: ["string", "null"]
         isActive:
@@ -659,6 +663,10 @@ components:
           type: string
         description:
           type: string
+        gameLink:
+          type: string
+        groupLink:
+          type: string
 
     GameUpdate:
       type: object
@@ -666,6 +674,10 @@ components:
         name:
           type: string
         description:
+          type: ["string", "null"]
+        gameLink:
+          type: ["string", "null"]
+        groupLink:
           type: ["string", "null"]
         isActive:
           type: boolean

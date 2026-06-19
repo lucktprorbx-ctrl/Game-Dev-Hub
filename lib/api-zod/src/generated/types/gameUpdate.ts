@@ -10,5 +10,9 @@ export interface GameUpdate {
   name?: string;
   /** @nullable */
   description?: string | null;
+  /** @nullable */
+  gameLink?: string | null;
+  /** @nullable */
+  groupLink?: string | null;
   isActive?: boolean;
 }

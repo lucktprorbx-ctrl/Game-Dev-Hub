@@ -4,14 +4,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { 
   LayoutDashboard, 
-  Gamepad2, 
   TrendingUp, 
   CalendarDays, 
   Users,
   LogOut
 } from 'lucide-react';
 import { useLogout } from '@workspace/api-client-react';
-import { Button } from 'react-day-picker';
+import { Button } from '@/components/ui/button';
 
 export function Sidebar() {
   const [location] = useLocation();
@@ -23,7 +22,6 @@ export function Sidebar() {
 
   const navItems = [
     { href: '/', icon: LayoutDashboard, label: t('nav.dashboard'), adminOnly: true },
-    { href: '/games', icon: Gamepad2, label: t('nav.games'), adminOnly: true },
     { href: '/revenue', icon: TrendingUp, label: t('nav.revenue'), adminOnly: true },
     { href: '/planning', icon: CalendarDays, label: t('nav.planning'), adminOnly: false },
     { href: '/users', icon: Users, label: t('nav.users'), adminOnly: true },
@@ -39,7 +37,7 @@ export function Sidebar() {
   return (
     <div className="w-64 border-r border-border bg-sidebar h-screen flex flex-col fixed left-0 top-0 text-sidebar-foreground">
       <div className="h-16 flex items-center px-6 border-b border-sidebar-border">
-        <h1 className="font-bold text-xl tracking-tight text-sidebar-primary">RoVerse<span className="text-sidebar-foreground">FR</span></h1>
+        <h1 className="font-bold text-xl tracking-tight text-sidebar-primary">Ro<span className="text-sidebar-foreground">Check</span></h1>
       </div>
       
       <div className="flex-1 py-6 px-4 flex flex-col gap-1 overflow-y-auto">
@@ -64,13 +62,13 @@ export function Sidebar() {
           {user?.robloxAvatarUrl ? (
             <img src={user.robloxAvatarUrl} alt="" className="w-8 h-8 rounded-full bg-muted" />
           ) : (
-            <div className="w-8 h-8 rounded-full bg-sidebar-primary/20 flex items-center justify-center text-sidebar-primary font-bold">
+            <div className="w-8 h-8 rounded-full bg-sidebar-primary/20 flex items-center justify-center text-sidebar-primary font-bold text-sm">
               {user?.robloxUsername?.charAt(0) || 'U'}
             </div>
           )}
           <div className="flex flex-col truncate">
             <span className="text-sm font-medium truncate">{user?.robloxDisplayName || user?.robloxUsername}</span>
-            <span className="text-xs text-muted-foreground truncate">{user?.role}</span>
+            <span className="text-xs text-muted-foreground capitalize truncate">{user?.role}</span>
           </div>
         </div>
         <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground" onClick={handleLogout}>

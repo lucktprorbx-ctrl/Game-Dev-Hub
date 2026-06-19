@@ -10,4 +10,6 @@ export interface GameInput {
   robloxGameId: string;
   name: string;
   description?: string;
+  gameLink?: string;
+  groupLink?: string;
 }

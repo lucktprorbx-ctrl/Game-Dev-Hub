@@ -13,6 +13,10 @@ export interface Game {
   /** @nullable */
   description?: string | null;
   /** @nullable */
+  gameLink?: string | null;
+  /** @nullable */
+  groupLink?: string | null;
+  /** @nullable */
   thumbnailUrl?: string | null;
   isActive?: boolean;
   createdAt: Date;
