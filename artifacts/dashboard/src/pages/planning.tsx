@@ -12,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Plus, Columns2, ArrowLeft, Trash2, CalendarDays } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 
 interface SelectedBoard {
   id: number;
@@ -34,7 +35,9 @@ const DOT_COLORS = [
 ];
 
 export default function Planning() {
-  const { data: boards, isLoading } = useListBoards();
+  const { t } = useTranslation();
+  const { data: boardsData, isLoading } = useListBoards();
+  const boards = Array.isArray(boardsData) ? boardsData : [];
   const [selectedBoard, setSelectedBoard] = useState<SelectedBoard | null>(null);
   const [newBoardDialog, setNewBoardDialog] = useState(false);
   const [boardName, setBoardName] = useState('');
@@ -73,7 +76,7 @@ export default function Planning() {
               onClick={() => setSelectedBoard(null)}
               className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm"
             >
-              <ArrowLeft className="w-4 h-4" /> Boards
+              <ArrowLeft className="w-4 h-4" /> {t('planning.boards')}
             </button>
             <span className="text-muted-foreground/40">/</span>
             <h1 className="text-2xl font-bold tracking-tight">{selectedBoard.name}</h1>
@@ -81,8 +84,8 @@ export default function Planning() {
 
           <Tabs defaultValue="kanban" className="w-full flex-1">
             <TabsList className="mb-4">
-              <TabsTrigger value="kanban">Kanban Board</TabsTrigger>
-              <TabsTrigger value="calendar">Calendar</TabsTrigger>
+              <TabsTrigger value="kanban">{t('planning.kanban')}</TabsTrigger>
+              <TabsTrigger value="calendar">{t('planning.calendar')}</TabsTrigger>
             </TabsList>
             <TabsContent value="kanban" className="mt-0">
               <KanbanBoard boardId={selectedBoard.id} />
@@ -99,9 +102,9 @@ export default function Planning() {
   return (
     <PageTransition>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Planning</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t('planning.title')}</h1>
         <Button size="sm" className="gap-1.5" onClick={() => setNewBoardDialog(true)}>
-          <Plus className="w-4 h-4" /> New Board
+          <Plus className="w-4 h-4" /> {t('planning.newBoard')}
         </Button>
       </div>
 
@@ -109,7 +112,7 @@ export default function Planning() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-32 rounded-xl" />)}
         </div>
-      ) : boards && boards.length > 0 ? (
+      ) : boards.length > 0 ? (
         <motion.div
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
           initial="hidden"
@@ -157,10 +160,10 @@ export default function Planning() {
           <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
             <Columns2 className="w-8 h-8 text-primary/60" />
           </div>
-          <h3 className="font-semibold text-lg mb-1">No boards yet</h3>
-          <p className="text-muted-foreground text-sm mb-4">Create your first board to start planning.</p>
+          <h3 className="font-semibold text-lg mb-1">{t('planning.noBoardsTitle')}</h3>
+          <p className="text-muted-foreground text-sm mb-4">{t('planning.noBoardsDesc')}</p>
           <Button onClick={() => setNewBoardDialog(true)} size="sm">
-            <Plus className="w-4 h-4 mr-1.5" /> New Board
+            <Plus className="w-4 h-4 mr-1.5" /> {t('planning.newBoard')}
           </Button>
         </div>
       )}
@@ -168,18 +171,18 @@ export default function Planning() {
       <Dialog open={newBoardDialog} onOpenChange={setNewBoardDialog}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>New Board</DialogTitle>
+            <DialogTitle>{t('planning.newBoardDialog')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 pt-1">
             <Input
-              placeholder="Board name"
+              placeholder={t('planning.boardNamePlaceholder')}
               value={boardName}
               onChange={e => setBoardName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleCreateBoard()}
               autoFocus
             />
             <Button className="w-full" onClick={handleCreateBoard} disabled={createBoard.isPending || !boardName.trim()}>
-              {createBoard.isPending ? 'Creating...' : 'Create Board'}
+              {createBoard.isPending ? t('planning.creating') : t('planning.createBoard')}
             </Button>
           </div>
         </DialogContent>

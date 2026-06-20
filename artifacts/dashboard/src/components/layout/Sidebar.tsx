@@ -7,7 +7,8 @@ import {
   TrendingUp, 
   CalendarDays, 
   Users,
-  LogOut
+  LogOut,
+  Gamepad2,
 } from 'lucide-react';
 import { useLogout } from '@workspace/api-client-react';
 import { Button } from '@/components/ui/button';
@@ -15,13 +16,14 @@ import { Button } from '@/components/ui/button';
 export function Sidebar() {
   const [location] = useLocation();
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const logout = useLogout();
 
   const isAdmin = user?.role === 'admin';
 
   const navItems = [
     { href: '/', icon: LayoutDashboard, label: t('nav.dashboard'), adminOnly: true },
+    { href: '/games', icon: Gamepad2, label: t('nav.games'), adminOnly: false },
     { href: '/revenue', icon: TrendingUp, label: t('nav.revenue'), adminOnly: true },
     { href: '/planning', icon: CalendarDays, label: t('nav.planning'), adminOnly: false },
     { href: '/users', icon: Users, label: t('nav.users'), adminOnly: true },
@@ -32,6 +34,10 @@ export function Sidebar() {
   const handleLogout = async () => {
     await logout.mutateAsync(undefined);
     window.location.href = '/login';
+  };
+
+  const toggleLang = () => {
+    i18n.changeLanguage(i18n.language === 'fr' ? 'en' : 'fr');
   };
 
   return (
@@ -71,6 +77,16 @@ export function Sidebar() {
             <span className="text-xs text-muted-foreground capitalize truncate">{user?.role}</span>
           </div>
         </div>
+
+        <button
+          onClick={toggleLang}
+          className="w-full flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-foreground mb-1 px-3 py-1.5 rounded-md hover:bg-sidebar-accent/30 transition-colors"
+        >
+          <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-semibold transition-colors", i18n.language === 'en' ? 'bg-primary/20 text-primary' : 'text-muted-foreground/60')}>EN</span>
+          <span className="text-muted-foreground/40">/</span>
+          <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-semibold transition-colors", i18n.language === 'fr' ? 'bg-primary/20 text-primary' : 'text-muted-foreground/60')}>FR</span>
+        </button>
+
         <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground" onClick={handleLogout}>
           <LogOut className="h-4 w-4 mr-2" />
           {t('nav.logout')}

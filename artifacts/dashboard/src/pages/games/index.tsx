@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { Link } from 'wouter';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ExternalLink, Trash2, ChevronRight, Gamepad2, Users, Globe } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 function extractGameId(url: string): string {
   const match = url.match(/games\/(\d+)/i) || url.match(/placeId=(\d+)/i);
@@ -19,6 +20,7 @@ function extractGameId(url: string): string {
 }
 
 export default function Games() {
+  const { t } = useTranslation();
   const { data: games, isLoading } = useListGames();
   const createGame = useCreateGame();
   const deleteGame = useDeleteGame();
@@ -51,9 +53,9 @@ export default function Games() {
   return (
     <PageTransition>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold tracking-tight">Games</h1>
+        <h1 className="text-3xl font-bold tracking-tight">{t('games.title')}</h1>
         <Button onClick={() => setOpen(true)} className="gap-2">
-          <Gamepad2 className="w-4 h-4" /> Link Game
+          <Gamepad2 className="w-4 h-4" /> {t('games.linkGame')}
         </Button>
       </div>
 
@@ -64,8 +66,8 @@ export default function Games() {
       ) : games?.length === 0 ? (
         <div className="text-center py-20 text-muted-foreground">
           <Gamepad2 className="w-12 h-12 mx-auto mb-3 opacity-20" />
-          <p className="text-lg font-medium mb-1">No games linked yet</p>
-          <p className="text-sm">Click "Link Game" to add your first Roblox game.</p>
+          <p className="text-lg font-medium mb-1">{t('games.noGamesTitle')}</p>
+          <p className="text-sm">{t('games.noGamesDesc')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -83,7 +85,7 @@ export default function Games() {
                     </div>
                   </div>
                   <Badge variant={game.isActive ? 'default' : 'secondary'} className="flex-shrink-0 text-xs">
-                    {game.isActive ? 'Active' : 'Inactive'}
+                    {game.isActive ? t('games.active') : t('games.inactive')}
                   </Badge>
                 </div>
               </CardHeader>
@@ -96,7 +98,7 @@ export default function Games() {
                     <a href={game.gameLink} target="_blank" rel="noopener noreferrer"
                       className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors truncate">
                       <Globe className="w-3 h-3 flex-shrink-0" />
-                      <span className="truncate">Game page</span>
+                      <span className="truncate">{t('games.gamePage')}</span>
                       <ExternalLink className="w-2.5 h-2.5 flex-shrink-0" />
                     </a>
                   )}
@@ -104,7 +106,7 @@ export default function Games() {
                     <a href={game.groupLink} target="_blank" rel="noopener noreferrer"
                       className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors truncate">
                       <Users className="w-3 h-3 flex-shrink-0" />
-                      <span className="truncate">Group page</span>
+                      <span className="truncate">{t('games.groupPage')}</span>
                       <ExternalLink className="w-2.5 h-2.5 flex-shrink-0" />
                     </a>
                   )}
@@ -119,7 +121,7 @@ export default function Games() {
                   </button>
                   <Link href={`/games/${game.id}`}
                     className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors">
-                    View stats <ChevronRight className="w-3 h-3" />
+                    {t('games.viewStats')} <ChevronRight className="w-3 h-3" />
                   </Link>
                 </div>
               </CardContent>
@@ -132,56 +134,58 @@ export default function Games() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Gamepad2 className="w-4 h-4" /> Link a Roblox Game
+              <Gamepad2 className="w-4 h-4" /> {t('games.linkAGame')}
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreate} className="space-y-4 pt-1">
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Game Name <span className="text-destructive">*</span></label>
-              <Input required placeholder="e.g. RoVerse Horizon" value={name} onChange={e => setName(e.target.value)} />
+              <label className="text-sm font-medium mb-1.5 block">
+                {t('games.gameName')} <span className="text-destructive">*</span>
+              </label>
+              <Input required placeholder={t('games.gameNamePlaceholder')} value={name} onChange={e => setName(e.target.value)} />
             </div>
             <div>
               <label className="text-sm font-medium mb-1.5 block">
-                Game Link <span className="text-destructive">*</span>
-                <span className="text-muted-foreground text-xs font-normal ml-1">(Roblox URL or Game ID)</span>
+                {t('games.gameLink')} <span className="text-destructive">*</span>
+                <span className="text-muted-foreground text-xs font-normal ml-1">{t('games.robloxUrlOrId')}</span>
               </label>
               <Input
                 required
-                placeholder="https://www.roblox.com/games/12345678/..."
+                placeholder={t('games.gameLinkPlaceholder')}
                 value={gameLink}
                 onChange={e => setGameLink(e.target.value)}
               />
               {gameLink && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  Game ID detected: <span className="text-primary font-mono">{extractGameId(gameLink)}</span>
+                  {t('games.gameIdDetected')} <span className="text-primary font-mono">{extractGameId(gameLink)}</span>
                 </p>
               )}
             </div>
             <div>
               <label className="text-sm font-medium mb-1.5 block">
-                Group Link
-                <span className="text-muted-foreground text-xs font-normal ml-1">(optional)</span>
+                {t('games.groupLink')}
+                <span className="text-muted-foreground text-xs font-normal ml-1">{t('games.optional')}</span>
               </label>
               <Input
-                placeholder="https://www.roblox.com/communities/..."
+                placeholder={t('games.groupLinkPlaceholder')}
                 value={groupLink}
                 onChange={e => setGroupLink(e.target.value)}
               />
             </div>
             <div>
               <label className="text-sm font-medium mb-1.5 block">
-                Description
-                <span className="text-muted-foreground text-xs font-normal ml-1">(optional)</span>
+                {t('games.description')}
+                <span className="text-muted-foreground text-xs font-normal ml-1">{t('games.optional')}</span>
               </label>
               <Textarea
-                placeholder="A short description of this game..."
+                placeholder={t('games.descriptionPlaceholder')}
                 value={description}
                 onChange={e => setDescription(e.target.value)}
                 className="resize-none h-20 text-sm"
               />
             </div>
             <Button type="submit" className="w-full" disabled={createGame.isPending}>
-              {createGame.isPending ? 'Linking...' : 'Link Game'}
+              {createGame.isPending ? t('games.linking') : t('games.linkGame')}
             </Button>
           </form>
         </DialogContent>
