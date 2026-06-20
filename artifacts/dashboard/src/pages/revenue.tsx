@@ -1,12 +1,9 @@
-import { useGetRevenueTracker } from '@workspace/api-client-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PageTransition } from '@/components/ui/page-transition';
 import { useTranslation } from 'react-i18next';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { TrendingUp, AlertCircle } from 'lucide-react';
 
 export default function Revenue() {
-  const { data: entries, isLoading } = useGetRevenueTracker();
   const { t } = useTranslation();
 
   return (
@@ -15,43 +12,22 @@ export default function Revenue() {
         <h1 className="text-3xl font-bold tracking-tight">{t('nav.revenue')}</h1>
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Game</TableHead>
-                <TableHead>Revenue %</TableHead>
-                <TableHead className="text-right">Monthly Est. (Robux)</TableHead>
-                <TableHead className="text-right">Monthly Est. (EUR)</TableHead>
-                <TableHead className="text-right">Trend</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-8">{t('common.loading')}</TableCell></TableRow>
-              ) : entries?.map(entry => (
-                <TableRow key={entry.gameId}>
-                  <TableCell className="font-medium">{entry.gameName}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className="w-16 bg-muted h-2 rounded-full overflow-hidden">
-                        <div className="bg-primary h-full" style={{ width: `${entry.revenuePercentage}%` }} />
-                      </div>
-                      <span className="text-xs text-muted-foreground">{entry.revenuePercentage}%</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">{t('common.robux')}{entry.monthlyEstimateRobux.toLocaleString()}</TableCell>
-                  <TableCell className="text-right">{t('common.eur')}{entry.monthlyEstimateEur.toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
-                  <TableCell className="text-right">
-                    <Badge variant={entry.trend >= 0 ? 'default' : 'destructive'} className={entry.trend >= 0 ? 'bg-green-500/20 text-green-500 hover:bg-green-500/30 border-green-500/20' : ''}>
-                      {entry.trend >= 0 ? '+' : ''}{entry.trend}%
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+      <Card className="border-dashed">
+        <CardContent className="py-20 flex flex-col items-center text-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center">
+            <TrendingUp className="w-8 h-8 text-amber-400" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold mb-2">Revenue Tracker</h2>
+            <p className="text-muted-foreground text-sm max-w-md">
+              Roblox doesn't currently provide a public real-time revenue API.
+              This section will display earnings, splits, and monthly estimates once the Roblox Open Cloud API supports it.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 border border-border/50 rounded-lg px-4 py-3 mt-2">
+            <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 text-amber-400" />
+            <span>Tracking coming soon · Roblox Open Cloud roadmap</span>
+          </div>
         </CardContent>
       </Card>
     </PageTransition>

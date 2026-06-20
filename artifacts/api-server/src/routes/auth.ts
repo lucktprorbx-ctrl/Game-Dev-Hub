@@ -83,16 +83,18 @@ router.get("/auth/roblox/callback", async (req, res): Promise<void> => {
 
     const robloxId = userInfo.sub;
 
-    let role: "admin" | "collaborator" = "collaborator";
-    if (HARDCODED_ADMINS.includes(robloxId)) {
-      role = "admin";
-    } else if (HARDCODED_COLLABORATORS.includes(robloxId)) {
-      role = "collaborator";
-    }
+    // Determine role from hardcoded lists (takes priority)
+    const isHardcodedAdmin = HARDCODED_ADMINS.includes(robloxId);
+    const isHardcodedCollaborator = HARDCODED_COLLABORATORS.includes(robloxId);
+    const isHardcoded = isHardcodedAdmin || isHardcodedCollaborator;
 
     let [user] = await db.select().from(usersTable).where(eq(usersTable.robloxId, robloxId));
 
     if (!user) {
+      // New user: assign role from hardcoded lists, default to collaborator
+      let role: "admin" | "collaborator" = "collaborator";
+      if (isHardcodedAdmin) role = "admin";
+
       const [created] = await db.insert(usersTable).values({
         robloxId,
         robloxUsername: userInfo.preferred_username,
@@ -104,11 +106,18 @@ router.get("/auth/roblox/callback", async (req, res): Promise<void> => {
       }).returning();
       user = created;
     } else {
+      // Existing user: always update profile info.
+      // Only override the role if the user is in the hardcoded lists.
+      // Otherwise, preserve the role assigned by an admin.
+      const updatedRole = isHardcoded
+        ? (isHardcodedAdmin ? "admin" : "collaborator")
+        : user.role;
+
       const [updated] = await db.update(usersTable).set({
         robloxUsername: userInfo.preferred_username,
         robloxDisplayName: userInfo.display_name ?? null,
         robloxAvatarUrl: userInfo.picture ?? null,
-        role,
+        role: updatedRole,
       }).where(eq(usersTable.id, user.id)).returning();
       user = updated;
     }

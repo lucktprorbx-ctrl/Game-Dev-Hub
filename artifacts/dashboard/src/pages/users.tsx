@@ -1,4 +1,4 @@
-import { useListUsers, useUpdateUser, getListUsersQueryKey } from '@workspace/api-client-react';
+import { useListUsers, useUpdateUser, useCreateUser, useDeleteUser, getListUsersQueryKey } from '@workspace/api-client-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -6,11 +6,11 @@ import { PageTransition } from '@/components/ui/page-transition';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { useQueryClient } from '@tanstack/react-query';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Shield, Users2 } from 'lucide-react';
+import { Shield, Users2, UserPlus, Trash2, AlertCircle } from 'lucide-react';
 
 function RoleBadge({ role }: { role: string }) {
   if (role === 'admin') {
@@ -35,15 +35,27 @@ const GROUP_OPTIONS = ['Core Team', 'Dev Team', 'Art Team', 'Marketing Team', 'I
 export default function Users() {
   const { data: users, isLoading } = useListUsers();
   const updateUser = useUpdateUser();
+  const createUser = useCreateUser();
+  const deleteUser = useDeleteUser();
   const queryClient = useQueryClient();
   const { t } = useTranslation();
 
+  // Edit dialog state
   const [selectedUser, setSelectedUser] = useState<number | null>(null);
   const [role, setRole] = useState<'admin' | 'collaborator'>('collaborator');
   const [subroles, setSubroles] = useState<string[]>([]);
   const [groups, setGroups] = useState<string[]>([]);
   const [customSubrole, setCustomSubrole] = useState('');
   const [customGroup, setCustomGroup] = useState('');
+
+  // Add user dialog state
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [newRobloxId, setNewRobloxId] = useState('');
+  const [newRole, setNewRole] = useState<'admin' | 'collaborator'>('collaborator');
+  const [addError, setAddError] = useState('');
+  const [addLoading, setAddLoading] = useState(false);
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
 
   const openEdit = (user: { id: number; role: 'admin' | 'collaborator'; subroles: string[]; groups: string[] }) => {
     setSelectedUser(user.id);
@@ -57,27 +69,46 @@ export default function Users() {
   const handleUpdate = async () => {
     if (!selectedUser) return;
     await updateUser.mutateAsync({ id: selectedUser, data: { role, subroles, groups } });
-    queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
+    invalidate();
     setSelectedUser(null);
   };
 
-  const toggleSubrole = (sr: string) => {
-    setSubroles(prev => prev.includes(sr) ? prev.filter(x => x !== sr) : [...prev, sr]);
+  const handleDelete = async (id: number) => {
+    await deleteUser.mutateAsync({ id });
+    invalidate();
   };
 
-  const toggleGroup = (g: string) => {
-    setGroups(prev => prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g]);
+  const handleAddUser = async () => {
+    const id = newRobloxId.trim();
+    if (!id) return;
+    setAddError('');
+    setAddLoading(true);
+    try {
+      await createUser.mutateAsync({ data: { robloxId: id, role: newRole } });
+      invalidate();
+      setAddDialogOpen(false);
+      setNewRobloxId('');
+      setNewRole('collaborator');
+    } catch (err: any) {
+      const msg = err?.response?.data?.error ?? err?.message ?? 'Failed to add user';
+      setAddError(msg);
+    } finally {
+      setAddLoading(false);
+    }
   };
+
+  const toggleSubrole = (sr: string) => setSubroles(prev => prev.includes(sr) ? prev.filter(x => x !== sr) : [...prev, sr]);
+  const toggleGroup = (g: string) => setGroups(prev => prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g]);
 
   const addCustomSubrole = () => {
     const v = customSubrole.trim();
-    if (v && !subroles.includes(v)) { setSubroles(prev => [...prev, v]); }
+    if (v && !subroles.includes(v)) setSubroles(prev => [...prev, v]);
     setCustomSubrole('');
   };
 
   const addCustomGroup = () => {
     const v = customGroup.trim();
-    if (v && !groups.includes(v)) { setGroups(prev => [...prev, v]); }
+    if (v && !groups.includes(v)) setGroups(prev => [...prev, v]);
     setCustomGroup('');
   };
 
@@ -87,6 +118,9 @@ export default function Users() {
     <PageTransition>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold tracking-tight">{t('nav.users')}</h1>
+        <Button onClick={() => { setAddDialogOpen(true); setAddError(''); }} className="gap-2">
+          <UserPlus className="w-4 h-4" /> Add User
+        </Button>
       </div>
 
       <Card>
@@ -104,14 +138,16 @@ export default function Users() {
             <TableBody>
               {isLoading ? (
                 <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">{t('common.loading')}</TableCell></TableRow>
+              ) : users?.length === 0 ? (
+                <TableRow><TableCell colSpan={5} className="text-center py-10 text-muted-foreground">No users yet. Add one above.</TableCell></TableRow>
               ) : users?.map(user => (
-                <TableRow key={user.id}>
+                <TableRow key={user.id} className="group">
                   <TableCell>
                     <div className="flex items-center gap-3">
                       {user.robloxAvatarUrl ? (
-                        <img src={user.robloxAvatarUrl} alt="" className="w-8 h-8 rounded-full bg-muted" />
+                        <img src={user.robloxAvatarUrl} alt="" className="w-8 h-8 rounded-full bg-muted flex-shrink-0" />
                       ) : (
-                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-sm">
+                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-sm flex-shrink-0">
                           {user.robloxUsername.charAt(0).toUpperCase()}
                         </div>
                       )}
@@ -139,9 +175,17 @@ export default function Users() {
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="sm" onClick={() => openEdit(user as any)}>
-                      {t('common.edit')}
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(user as any)}>
+                        {t('common.edit')}
+                      </Button>
+                      <button
+                        onClick={() => handleDelete(user.id)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-1.5 rounded"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -150,10 +194,65 @@ export default function Users() {
         </CardContent>
       </Card>
 
+      {/* Add User Dialog */}
+      <Dialog open={addDialogOpen} onOpenChange={(open) => { setAddDialogOpen(open); if (!open) { setAddError(''); setNewRobloxId(''); } }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-4 h-4" /> Add Team Member
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-1">
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">
+                Roblox User ID <span className="text-destructive">*</span>
+                <span className="text-xs text-muted-foreground font-normal ml-1">(numeric ID, not username)</span>
+              </label>
+              <Input
+                placeholder="e.g. 454458772"
+                value={newRobloxId}
+                onChange={e => setNewRobloxId(e.target.value.replace(/\D/g, ''))}
+                onKeyDown={e => e.key === 'Enter' && handleAddUser()}
+                autoFocus
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Find it at roblox.com/users/[ID]/profile or via Roblox profile settings.
+              </p>
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Role</label>
+              <Select value={newRole} onValueChange={(v: 'admin' | 'collaborator') => setNewRole(v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">
+                    <span className="flex items-center gap-2"><Shield className="w-3.5 h-3.5 text-amber-400" /> Admin</span>
+                  </SelectItem>
+                  <SelectItem value="collaborator">
+                    <span className="flex items-center gap-2"><Users2 className="w-3.5 h-3.5 text-indigo-400" /> Collaborator</span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {addError && (
+              <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">
+                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                {addError}
+              </div>
+            )}
+            <Button className="w-full" onClick={handleAddUser} disabled={addLoading || !newRobloxId.trim()}>
+              {addLoading ? 'Fetching Roblox profile...' : 'Add User'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Dialog */}
       <Dialog open={selectedUser !== null} onOpenChange={(open) => { if (!open) setSelectedUser(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit User — {editingUser?.robloxDisplayName || editingUser?.robloxUsername}</DialogTitle>
+            <DialogTitle>Edit — {editingUser?.robloxDisplayName || editingUser?.robloxUsername}</DialogTitle>
           </DialogHeader>
           <div className="space-y-5 pt-2">
             <div>
@@ -177,25 +276,15 @@ export default function Users() {
               <label className="text-sm font-medium mb-2 block">Subroles</label>
               <div className="flex flex-wrap gap-2 mb-2">
                 {SUBROLE_OPTIONS.map(sr => (
-                  <button
-                    key={sr}
-                    onClick={() => toggleSubrole(sr)}
-                    className={`text-xs px-2 py-1 rounded-full border transition-colors ${
-                      subroles.includes(sr)
-                        ? 'bg-primary/20 border-primary/50 text-primary'
-                        : 'border-border/60 text-muted-foreground hover:border-primary/30'
-                    }`}
-                  >{sr}</button>
+                  <button key={sr} onClick={() => toggleSubrole(sr)}
+                    className={`text-xs px-2 py-1 rounded-full border transition-colors ${subroles.includes(sr) ? 'bg-primary/20 border-primary/50 text-primary' : 'border-border/60 text-muted-foreground hover:border-primary/30'}`}>
+                    {sr}
+                  </button>
                 ))}
               </div>
               <div className="flex gap-2">
-                <Input
-                  placeholder="Custom subrole..."
-                  value={customSubrole}
-                  onChange={e => setCustomSubrole(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCustomSubrole())}
-                  className="h-8 text-sm"
-                />
+                <Input placeholder="Custom subrole..." value={customSubrole} onChange={e => setCustomSubrole(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCustomSubrole())} className="h-8 text-sm" />
                 <Button size="sm" variant="outline" onClick={addCustomSubrole} className="h-8">Add</Button>
               </div>
               {subroles.length > 0 && (
@@ -213,31 +302,22 @@ export default function Users() {
               <label className="text-sm font-medium mb-2 block">Groups</label>
               <div className="flex flex-wrap gap-2 mb-2">
                 {GROUP_OPTIONS.map(g => (
-                  <button
-                    key={g}
-                    onClick={() => toggleGroup(g)}
-                    className={`text-xs px-2 py-1 rounded-full border transition-colors ${
-                      groups.includes(g)
-                        ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-400'
-                        : 'border-border/60 text-muted-foreground hover:border-indigo-500/30'
-                    }`}
-                  >{g}</button>
+                  <button key={g} onClick={() => toggleGroup(g)}
+                    className={`text-xs px-2 py-1 rounded-full border transition-colors ${groups.includes(g) ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-400' : 'border-border/60 text-muted-foreground hover:border-indigo-500/30'}`}>
+                    {g}
+                  </button>
                 ))}
               </div>
               <div className="flex gap-2">
-                <Input
-                  placeholder="Custom group..."
-                  value={customGroup}
-                  onChange={e => setCustomGroup(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCustomGroup())}
-                  className="h-8 text-sm"
-                />
+                <Input placeholder="Custom group..." value={customGroup} onChange={e => setCustomGroup(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCustomGroup())} className="h-8 text-sm" />
                 <Button size="sm" variant="outline" onClick={addCustomGroup} className="h-8">Add</Button>
               </div>
               {groups.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
                   {groups.map(g => (
-                    <span key={g} className="text-xs px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 cursor-pointer hover:border-red-400/50 hover:text-red-400" onClick={() => toggleGroup(g)}>
+                    <span key={g} onClick={() => toggleGroup(g)}
+                      className="text-xs px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 cursor-pointer hover:border-red-400/50 hover:text-red-400">
                       ({g}) ×
                     </span>
                   ))}

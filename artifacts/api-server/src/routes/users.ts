@@ -19,6 +19,38 @@ function serializeUser(user: typeof usersTable.$inferSelect) {
   };
 }
 
+async function fetchRobloxProfile(robloxId: string): Promise<{
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+}> {
+  try {
+    const [userRes, avatarRes] = await Promise.all([
+      fetch(`https://users.roblox.com/v1/users/${robloxId}`),
+      fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${robloxId}&size=48x48&format=Png`),
+    ]);
+
+    let username = robloxId;
+    let displayName: string | null = null;
+    let avatarUrl: string | null = null;
+
+    if (userRes.ok) {
+      const data = await userRes.json() as { name?: string; displayName?: string };
+      username = data.name ?? robloxId;
+      displayName = data.displayName ?? null;
+    }
+
+    if (avatarRes.ok) {
+      const data = await avatarRes.json() as { data?: Array<{ imageUrl?: string }> };
+      avatarUrl = data.data?.[0]?.imageUrl ?? null;
+    }
+
+    return { username, displayName, avatarUrl };
+  } catch {
+    return { username: robloxId, displayName: null, avatarUrl: null };
+  }
+}
+
 router.get("/users", requireAuth, requireAdmin, async (_req, res): Promise<void> => {
   const users = await db.select().from(usersTable).orderBy(usersTable.createdAt);
   res.json(users.map(serializeUser));
@@ -30,17 +62,21 @@ router.post("/users", requireAuth, requireAdmin, async (req, res): Promise<void>
     res.status(400).json({ error: parsed.error.message });
     return;
   }
+
   const [existing] = await db.select().from(usersTable).where(eq(usersTable.robloxId, parsed.data.robloxId));
   if (existing) {
     res.status(409).json({ error: "User with this Roblox ID already exists" });
     return;
   }
 
-  const robloxUsername = parsed.data.robloxId;
+  const profile = await fetchRobloxProfile(parsed.data.robloxId);
 
   const [user] = await db.insert(usersTable).values({
-    ...parsed.data,
-    robloxUsername,
+    robloxId: parsed.data.robloxId,
+    robloxUsername: profile.username,
+    robloxDisplayName: profile.displayName,
+    robloxAvatarUrl: profile.avatarUrl,
+    role: parsed.data.role,
     subroles: parsed.data.subroles ?? [],
     groups: parsed.data.groups ?? [],
   }).returning();
