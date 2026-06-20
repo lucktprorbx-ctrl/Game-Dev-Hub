@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, boardsTable, boardColumnsTable, tasksTable, calendarEventsTable, usersTable } from "@workspace/db";
+import { db, boardsTable, boardColumnsTable, tasksTable, calendarEventsTable, usersTable, boardNotesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import {
@@ -269,6 +269,54 @@ router.delete("/planning/tasks/:id", requireAuth, async (req, res): Promise<void
     res.status(404).json({ error: "Task not found" });
     return;
   }
+  res.sendStatus(204);
+});
+
+// ── Notes ─────────────────────────────────────────────────────────────────────
+
+router.get("/planning/boards/:boardId/notes", requireAuth, async (req, res): Promise<void> => {
+  const boardId = parseIntParam(req.params["boardId"]);
+  if (!boardId) { res.status(400).json({ error: "Invalid boardId" }); return; }
+  const notes = await db.select().from(boardNotesTable)
+    .where(eq(boardNotesTable.boardId, boardId))
+    .orderBy(boardNotesTable.createdAt);
+  res.json(notes.map(n => ({
+    ...n,
+    createdAt: n.createdAt.toISOString(),
+    updatedAt: n.updatedAt.toISOString(),
+  })));
+});
+
+router.post("/planning/boards/:boardId/notes", requireAuth, async (req, res): Promise<void> => {
+  const boardId = parseIntParam(req.params["boardId"]);
+  if (!boardId) { res.status(400).json({ error: "Invalid boardId" }); return; }
+  const { title, content } = req.body as { title?: unknown; content?: unknown };
+  if (typeof title !== "string" || !title.trim()) { res.status(400).json({ error: "title is required" }); return; }
+  const [note] = await db.insert(boardNotesTable).values({
+    boardId,
+    title: title.trim(),
+    content: typeof content === "string" ? content : "",
+  }).returning();
+  res.status(201).json({ ...note, createdAt: note.createdAt.toISOString(), updatedAt: note.updatedAt.toISOString() });
+});
+
+router.patch("/planning/notes/:id", requireAuth, async (req, res): Promise<void> => {
+  const id = parseIntParam(req.params["id"]);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+  const { title, content } = req.body as { title?: unknown; content?: unknown };
+  const update: Record<string, unknown> = { updatedAt: new Date() };
+  if (typeof title === "string" && title.trim()) update["title"] = title.trim();
+  if (typeof content === "string") update["content"] = content;
+  const [note] = await db.update(boardNotesTable).set(update as any).where(eq(boardNotesTable.id, id)).returning();
+  if (!note) { res.status(404).json({ error: "Note not found" }); return; }
+  res.json({ ...note, createdAt: note.createdAt.toISOString(), updatedAt: note.updatedAt.toISOString() });
+});
+
+router.delete("/planning/notes/:id", requireAuth, async (req, res): Promise<void> => {
+  const id = parseIntParam(req.params["id"]);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+  const [note] = await db.delete(boardNotesTable).where(eq(boardNotesTable.id, id)).returning();
+  if (!note) { res.status(404).json({ error: "Note not found" }); return; }
   res.sendStatus(204);
 });
 

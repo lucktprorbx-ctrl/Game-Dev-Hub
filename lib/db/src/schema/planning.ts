@@ -61,3 +61,16 @@ export const calendarEventsTable = pgTable("calendar_events", {
 export const insertCalendarEventSchema = createInsertSchema(calendarEventsTable).omit({ id: true, createdAt: true });
 export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
 export type CalendarEvent = typeof calendarEventsTable.$inferSelect;
+
+export const boardNotesTable = pgTable("board_notes", {
+  id: serial("id").primaryKey(),
+  boardId: integer("board_id").notNull().references(() => boardsTable.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  content: text("content").notNull().default(""),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertBoardNoteSchema = createInsertSchema(boardNotesTable).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertBoardNote = z.infer<typeof insertBoardNoteSchema>;
+export type BoardNote = typeof boardNotesTable.$inferSelect;

@@ -12,21 +12,30 @@ import { useState, useEffect, useRef } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Shield, Users2, UserPlus, Trash2, AlertCircle, CheckCircle2, Ban } from 'lucide-react';
+import { getSubroleClasses } from '@/lib/role-colors';
 
 function RoleBadge({ role }: { role: string }) {
   if (role === 'admin') {
     return (
-      <Badge className="bg-amber-500/20 text-amber-400 border border-amber-500/30 hover:bg-amber-500/30 gap-1">
+      <Badge className="bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 gap-1">
         <Shield className="w-3 h-3" />
         Admin
       </Badge>
     );
   }
   return (
-    <Badge className="bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-500/30 gap-1">
+    <Badge className="bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 gap-1">
       <Users2 className="w-3 h-3" />
-      Collaborator
+      Collaborateur
     </Badge>
+  );
+}
+
+function SubroleBadge({ subrole }: { subrole: string }) {
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getSubroleClasses(subrole)}`}>
+      {subrole}
+    </span>
   );
 }
 
@@ -41,7 +50,6 @@ export default function Users() {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
 
-  // Edit dialog state
   const [selectedUser, setSelectedUser] = useState<number | null>(null);
   const [role, setRole] = useState<'admin' | 'collaborator'>('collaborator');
   const [subroles, setSubroles] = useState<string[]>([]);
@@ -49,14 +57,12 @@ export default function Users() {
   const [customSubrole, setCustomSubrole] = useState('');
   const [customGroup, setCustomGroup] = useState('');
 
-  // Add user dialog state
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [newRobloxId, setNewRobloxId] = useState('');
   const [newRole, setNewRole] = useState<'admin' | 'collaborator'>('collaborator');
   const [addError, setAddError] = useState('');
   const [addLoading, setAddLoading] = useState(false);
 
-  // Roblox profile preview state
   type RobloxPreview = { robloxId: string; username: string; displayName: string | null; avatarUrl: string | null; isBanned: boolean };
   const [preview, setPreview] = useState<RobloxPreview | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -67,16 +73,14 @@ export default function Users() {
     if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
     const id = newRobloxId.trim();
     if (!id || id.length < 4) { setPreview(null); setPreviewError(''); setPreviewLoading(false); return; }
-    setPreviewLoading(true);
-    setPreviewError('');
-    setPreview(null);
+    setPreviewLoading(true); setPreviewError(''); setPreview(null);
     previewTimerRef.current = setTimeout(async () => {
       try {
         const res = await fetch(`/api/users/preview/${id}`);
         const data = await res.json();
-        if (!res.ok) { setPreviewError(data.error ?? 'User not found'); setPreview(null); }
+        if (!res.ok) { setPreviewError(data.error ?? t('users.userNotFound')); setPreview(null); }
         else setPreview(data as RobloxPreview);
-      } catch { setPreviewError('Failed to fetch profile'); }
+      } catch { setPreviewError(t('users.failedFetchProfile')); }
       finally { setPreviewLoading(false); }
     }, 600);
     return () => { if (previewTimerRef.current) clearTimeout(previewTimerRef.current); };
@@ -113,20 +117,15 @@ export default function Users() {
   const handleAddUser = async () => {
     const id = newRobloxId.trim();
     if (!id) return;
-    setAddError('');
-    setAddLoading(true);
+    setAddError(''); setAddLoading(true);
     try {
       await createUser.mutateAsync({ data: { robloxId: id, role: newRole } });
       invalidate();
       setAddDialogOpen(false);
-      setNewRobloxId('');
-      setNewRole('collaborator');
+      setNewRobloxId(''); setNewRole('collaborator');
     } catch (err: any) {
-      const msg = err?.response?.data?.error ?? err?.message ?? 'Failed to add user';
-      setAddError(msg);
-    } finally {
-      setAddLoading(false);
-    }
+      setAddError(err?.response?.data?.error ?? err?.message ?? t('users.failedAddUser'));
+    } finally { setAddLoading(false); }
   };
 
   const toggleSubrole = (sr: string) => setSubroles(prev => prev.includes(sr) ? prev.filter(x => x !== sr) : [...prev, sr]);
@@ -151,7 +150,7 @@ export default function Users() {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold tracking-tight">{t('nav.users')}</h1>
         <Button onClick={() => { setAddDialogOpen(true); setAddError(''); }} className="gap-2">
-          <UserPlus className="w-4 h-4" /> Add User
+          <UserPlus className="w-4 h-4" /> {t('users.addUser')}
         </Button>
       </div>
 
@@ -160,18 +159,18 @@ export default function Users() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Subroles</TableHead>
-                <TableHead>Groups</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t('users.tableUser')}</TableHead>
+                <TableHead>{t('users.tableRole')}</TableHead>
+                <TableHead>{t('users.tableSubroles')}</TableHead>
+                <TableHead>{t('users.tableGroups')}</TableHead>
+                <TableHead className="text-right">{t('users.tableActions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground">{t('common.loading')}</TableCell></TableRow>
               ) : users?.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="text-center py-10 text-muted-foreground">No users yet. Add one above.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-10 text-muted-foreground">{t('users.noUsersYet')}</TableCell></TableRow>
               ) : users?.map(user => (
                 <TableRow key={user.id} className="group">
                   <TableCell>
@@ -194,15 +193,16 @@ export default function Users() {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1 flex-wrap">
-                      {user.subroles?.map(sr => (
-                        <Badge key={sr} variant="outline" className="text-xs border-border/60 text-muted-foreground">{sr}</Badge>
-                      ))}
+                      {user.subroles?.length > 0
+                        ? user.subroles.map(sr => <SubroleBadge key={sr} subrole={sr} />)
+                        : <span className="text-xs text-muted-foreground/50">—</span>
+                      }
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1 flex-wrap">
                       {user.groups?.map(g => (
-                        <span key={g} className="text-xs text-muted-foreground">({g})</span>
+                        <span key={g} className="text-xs text-muted-foreground bg-muted/40 px-2 py-0.5 rounded-full border border-border/40">{g}</span>
                       ))}
                     </div>
                   </TableCell>
@@ -231,14 +231,14 @@ export default function Users() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <UserPlus className="w-4 h-4" /> Add Team Member
+              <UserPlus className="w-4 h-4" /> {t('users.addTeamMember')}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-1">
             <div>
               <label className="text-sm font-medium mb-1.5 block">
-                Roblox User ID <span className="text-destructive">*</span>
-                <span className="text-xs text-muted-foreground font-normal ml-1">(numeric ID)</span>
+                {t('users.robloxUserId')} <span className="text-destructive">*</span>
+                <span className="text-xs text-muted-foreground font-normal ml-1">{t('users.numericId')}</span>
               </label>
               <Input
                 placeholder="e.g. 454458772"
@@ -252,47 +252,36 @@ export default function Users() {
               </p>
             </div>
 
-            {/* Profile preview */}
             {newRobloxId.length >= 4 && (
               <div className="rounded-lg border border-border/60 overflow-hidden">
                 {previewLoading && (
                   <div className="flex items-center gap-3 p-3 bg-muted/10">
                     <Skeleton className="w-16 h-16 rounded-lg flex-shrink-0" />
                     <div className="space-y-2 flex-1">
-                      <Skeleton className="h-4 w-32" />
-                      <Skeleton className="h-3 w-24" />
-                      <Skeleton className="h-3 w-16" />
+                      <Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-24" /><Skeleton className="h-3 w-16" />
                     </div>
                   </div>
                 )}
                 {!previewLoading && preview && (
                   <div className="flex items-center gap-3 p-3 bg-muted/10">
                     {preview.avatarUrl ? (
-                      <img
-                        src={preview.avatarUrl}
-                        alt={preview.username}
-                        className="w-16 h-16 rounded-lg object-cover bg-muted flex-shrink-0"
-                      />
+                      <img src={preview.avatarUrl} alt={preview.username} className="w-16 h-16 rounded-lg object-cover bg-muted flex-shrink-0" />
                     ) : (
                       <div className="w-16 h-16 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-2xl flex-shrink-0">
                         {preview.username.charAt(0).toUpperCase()}
                       </div>
                     )}
                     <div className="min-w-0">
-                      <div className="font-semibold truncate">
-                        {preview.displayName || preview.username}
-                      </div>
-                      {preview.displayName && (
-                        <div className="text-xs text-muted-foreground">@{preview.username}</div>
-                      )}
+                      <div className="font-semibold truncate">{preview.displayName || preview.username}</div>
+                      {preview.displayName && <div className="text-xs text-muted-foreground">@{preview.username}</div>}
                       <div className="text-xs text-muted-foreground/60 mt-0.5">ID: {preview.robloxId}</div>
                       {preview.isBanned ? (
                         <div className="flex items-center gap-1 mt-1 text-xs text-destructive">
-                          <Ban className="w-3 h-3" /> Account banned
+                          <Ban className="w-3 h-3" /> {t('users.accountBanned')}
                         </div>
                       ) : (
                         <div className="flex items-center gap-1 mt-1 text-xs text-emerald-400">
-                          <CheckCircle2 className="w-3 h-3" /> Profile found
+                          <CheckCircle2 className="w-3 h-3" /> {t('users.profileFound')}
                         </div>
                       )}
                     </div>
@@ -300,37 +289,33 @@ export default function Users() {
                 )}
                 {!previewLoading && previewError && (
                   <div className="flex items-center gap-2 p-3 text-sm text-destructive bg-destructive/5">
-                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                    {previewError}
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />{previewError}
                   </div>
                 )}
               </div>
             )}
 
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Role</label>
+              <label className="text-sm font-medium mb-1.5 block">{t('users.role')}</label>
               <Select value={newRole} onValueChange={(v: 'admin' | 'collaborator') => setNewRole(v)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="admin">
-                    <span className="flex items-center gap-2"><Shield className="w-3.5 h-3.5 text-amber-400" /> Admin</span>
+                    <span className="flex items-center gap-2"><Shield className="w-3.5 h-3.5 text-red-400" /> {t('users.adminLabel')}</span>
                   </SelectItem>
                   <SelectItem value="collaborator">
-                    <span className="flex items-center gap-2"><Users2 className="w-3.5 h-3.5 text-indigo-400" /> Collaborator</span>
+                    <span className="flex items-center gap-2"><Users2 className="w-3.5 h-3.5 text-blue-400" /> {t('users.collaboratorLabel')}</span>
                   </SelectItem>
                 </SelectContent>
               </Select>
             </div>
             {addError && (
               <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">
-                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                {addError}
+                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />{addError}
               </div>
             )}
             <Button className="w-full" onClick={handleAddUser} disabled={addLoading || !newRobloxId.trim() || previewLoading}>
-              {addLoading ? 'Adding...' : 'Add User'}
+              {addLoading ? t('users.adding') : t('users.addUser')}
             </Button>
           </div>
         </DialogContent>
@@ -340,73 +325,76 @@ export default function Users() {
       <Dialog open={selectedUser !== null} onOpenChange={(open) => { if (!open) setSelectedUser(null); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Edit — {editingUser?.robloxDisplayName || editingUser?.robloxUsername}</DialogTitle>
+            <DialogTitle>{t('users.editTitle')} {editingUser?.robloxDisplayName || editingUser?.robloxUsername}</DialogTitle>
           </DialogHeader>
           <div className="space-y-5 pt-2">
             <div>
-              <label className="text-sm font-medium mb-2 block">Role</label>
+              <label className="text-sm font-medium mb-2 block">{t('users.role')}</label>
               <Select value={role} onValueChange={(v: 'admin' | 'collaborator') => setRole(v)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="admin">
-                    <span className="flex items-center gap-2"><Shield className="w-3.5 h-3.5 text-amber-400" /> Admin</span>
+                    <span className="flex items-center gap-2"><Shield className="w-3.5 h-3.5 text-red-400" /> {t('users.adminLabel')}</span>
                   </SelectItem>
                   <SelectItem value="collaborator">
-                    <span className="flex items-center gap-2"><Users2 className="w-3.5 h-3.5 text-indigo-400" /> Collaborator</span>
+                    <span className="flex items-center gap-2"><Users2 className="w-3.5 h-3.5 text-blue-400" /> {t('users.collaboratorLabel')}</span>
                   </SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-2 block">Subroles</label>
+              <label className="text-sm font-medium mb-2 block">{t('users.subroles')}</label>
               <div className="flex flex-wrap gap-2 mb-2">
                 {SUBROLE_OPTIONS.map(sr => (
                   <button key={sr} onClick={() => toggleSubrole(sr)}
-                    className={`text-xs px-2 py-1 rounded-full border transition-colors ${subroles.includes(sr) ? 'bg-primary/20 border-primary/50 text-primary' : 'border-border/60 text-muted-foreground hover:border-primary/30'}`}>
+                    className={`text-xs px-2 py-1 rounded-full border transition-colors ${
+                      subroles.includes(sr)
+                        ? getSubroleClasses(sr)
+                        : 'border-border/60 text-muted-foreground hover:border-primary/30'
+                    }`}>
                     {sr}
                   </button>
                 ))}
               </div>
               <div className="flex gap-2">
-                <Input placeholder="Custom subrole..." value={customSubrole} onChange={e => setCustomSubrole(e.target.value)}
+                <Input placeholder={t('users.customSubrole')} value={customSubrole} onChange={e => setCustomSubrole(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCustomSubrole())} className="h-8 text-sm" />
-                <Button size="sm" variant="outline" onClick={addCustomSubrole} className="h-8">Add</Button>
+                <Button size="sm" variant="outline" onClick={addCustomSubrole} className="h-8">{t('common.add')}</Button>
               </div>
               {subroles.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
                   {subroles.map(sr => (
-                    <Badge key={sr} variant="outline" className="text-xs cursor-pointer hover:border-destructive hover:text-destructive" onClick={() => toggleSubrole(sr)}>
+                    <button key={sr} onClick={() => toggleSubrole(sr)}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-opacity hover:opacity-70 ${getSubroleClasses(sr)}`}>
                       {sr} ×
-                    </Badge>
+                    </button>
                   ))}
                 </div>
               )}
             </div>
 
             <div>
-              <label className="text-sm font-medium mb-2 block">Groups</label>
+              <label className="text-sm font-medium mb-2 block">{t('users.groups')}</label>
               <div className="flex flex-wrap gap-2 mb-2">
                 {GROUP_OPTIONS.map(g => (
                   <button key={g} onClick={() => toggleGroup(g)}
-                    className={`text-xs px-2 py-1 rounded-full border transition-colors ${groups.includes(g) ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-400' : 'border-border/60 text-muted-foreground hover:border-indigo-500/30'}`}>
+                    className={`text-xs px-2 py-1 rounded-full border transition-colors ${groups.includes(g) ? 'bg-blue-500/20 border-blue-500/40 text-blue-400' : 'border-border/60 text-muted-foreground hover:border-blue-500/30'}`}>
                     {g}
                   </button>
                 ))}
               </div>
               <div className="flex gap-2">
-                <Input placeholder="Custom group..." value={customGroup} onChange={e => setCustomGroup(e.target.value)}
+                <Input placeholder={t('users.customGroup')} value={customGroup} onChange={e => setCustomGroup(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCustomGroup())} className="h-8 text-sm" />
-                <Button size="sm" variant="outline" onClick={addCustomGroup} className="h-8">Add</Button>
+                <Button size="sm" variant="outline" onClick={addCustomGroup} className="h-8">{t('common.add')}</Button>
               </div>
               {groups.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
                   {groups.map(g => (
                     <span key={g} onClick={() => toggleGroup(g)}
-                      className="text-xs px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 cursor-pointer hover:border-red-400/50 hover:text-red-400">
-                      ({g}) ×
+                      className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/30 cursor-pointer hover:border-red-400/50 hover:text-red-400">
+                      {g} ×
                     </span>
                   ))}
                 </div>

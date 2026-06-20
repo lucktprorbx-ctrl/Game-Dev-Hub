@@ -3,13 +3,14 @@ import { PageTransition } from '@/components/ui/page-transition';
 import { useListBoards, useCreateBoard, useDeleteBoard, getListBoardsQueryKey } from '@workspace/api-client-react';
 import { KanbanBoard } from '@/components/planning/KanbanBoard';
 import { CalendarView } from '@/components/planning/CalendarView';
+import { NotesView } from '@/components/planning/NotesView';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Columns2, ArrowLeft, Trash2, CalendarDays } from 'lucide-react';
+import { Plus, Columns2, ArrowLeft, Trash2, CalendarDays, FileText } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -84,14 +85,24 @@ export default function Planning() {
 
           <Tabs defaultValue="kanban" className="w-full flex-1">
             <TabsList className="mb-4">
-              <TabsTrigger value="kanban">{t('planning.kanban')}</TabsTrigger>
-              <TabsTrigger value="calendar">{t('planning.calendar')}</TabsTrigger>
+              <TabsTrigger value="kanban" className="gap-1.5">
+                <Columns2 className="w-3.5 h-3.5" />{t('planning.kanban')}
+              </TabsTrigger>
+              <TabsTrigger value="calendar" className="gap-1.5">
+                <CalendarDays className="w-3.5 h-3.5" />{t('planning.calendar')}
+              </TabsTrigger>
+              <TabsTrigger value="notes" className="gap-1.5">
+                <FileText className="w-3.5 h-3.5" />{t('planning.notes')}
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="kanban" className="mt-0">
               <KanbanBoard boardId={selectedBoard.id} />
             </TabsContent>
             <TabsContent value="calendar" className="mt-0">
               <CalendarView />
+            </TabsContent>
+            <TabsContent value="notes" className="mt-0">
+              <NotesView boardId={selectedBoard.id} />
             </TabsContent>
           </Tabs>
         </div>
