@@ -12,7 +12,8 @@ const SESSION_SECRET = process.env.SESSION_SECRET ?? "dev-secret-change-me";
 const BASE_URL = process.env.REPLIT_DOMAINS
   ? `https://${process.env.REPLIT_DOMAINS.split(",")[0]}`
   : "http://localhost:5000";
-const REDIRECT_URI = `${BASE_URL}/api/auth/roblox/callback`;
+const REDIRECT_URI =
+  process.env.ROBLOX_REDIRECT_URI ?? `${BASE_URL}/api/auth/roblox/callback`;
 
 const HARDCODED_ADMINS = ["454458772", "1428066981", "2001745284"];
 const HARDCODED_COLLABORATORS = ["3080402841", "9690401925"];
@@ -57,7 +58,16 @@ router.get("/auth/roblox/callback", async (req, res): Promise<void> => {
 
     if (!tokenRes.ok) {
       const body = await tokenRes.text();
-      req.log.error({ status: tokenRes.status, body }, "Token exchange failed");
+      req.log.error(
+        {
+          status: tokenRes.status,
+          body,
+          redirectUri: REDIRECT_URI,
+          clientIdPrefix: ROBLOX_CLIENT_ID?.slice(0, 6),
+          hasSecret: !!ROBLOX_CLIENT_SECRET,
+        },
+        "Token exchange failed",
+      );
       res.redirect("/?auth_error=true");
       return;
     }
