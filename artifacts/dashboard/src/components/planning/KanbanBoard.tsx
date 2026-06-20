@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
-  useListBoards, useGetBoard, useUpdateTask, useCreateTask, useDeleteTask,
-  useCreateBoard, getGetBoardQueryKey, getListBoardsQueryKey
+  useGetBoard, useUpdateTask, useCreateTask, useDeleteTask,
+  useCreateBoardColumn, useUpdateBoardColumn, useDeleteBoardColumn,
+  getGetBoardQueryKey,
 } from '@workspace/api-client-react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,8 +13,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Trash2, Columns2 } from 'lucide-react';
+import { Plus, Trash2, GripVertical, X, Pencil, Check } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
+
+interface KanbanBoardProps {
+  boardId: number;
+}
 
 const PRIORITY_COLORS = {
   high: 'bg-red-500/20 text-red-400 border-red-500/30',
@@ -21,43 +26,57 @@ const PRIORITY_COLORS = {
   low: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
 };
 
-export function KanbanBoard() {
-  const { data: boards, isLoading: boardsLoading } = useListBoards();
-  const [selectedBoardId, setSelectedBoardId] = useState<number | null>(null);
-  const activeBoardId = selectedBoardId ?? boards?.[0]?.id ?? null;
-
-  const { data: board, isLoading: boardLoading } = useGetBoard(activeBoardId!, {
-    query: { enabled: !!activeBoardId, queryKey: getGetBoardQueryKey(activeBoardId!) }
+export function KanbanBoard({ boardId }: KanbanBoardProps) {
+  const { data: board, isLoading: boardLoading } = useGetBoard(boardId, {
+    query: { queryKey: getGetBoardQueryKey(boardId) }
   });
 
   const updateTask = useUpdateTask();
   const createTask = useCreateTask();
   const deleteTask = useDeleteTask();
-  const createBoard = useCreateBoard();
+  const createCol = useCreateBoardColumn();
+  const updateCol = useUpdateBoardColumn();
+  const deleteCol = useDeleteBoardColumn();
   const queryClient = useQueryClient();
 
   const [taskDialog, setTaskDialog] = useState<{ open: boolean; columnId: number | null }>({ open: false, columnId: null });
-  const [newBoardDialog, setNewBoardDialog] = useState(false);
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDesc, setTaskDesc] = useState('');
   const [taskPriority, setTaskPriority] = useState<'low' | 'medium' | 'high' | ''>('');
   const [taskTags, setTaskTags] = useState('');
-  const [boardName, setBoardName] = useState('');
+
+  const [addingCol, setAddingCol] = useState(false);
+  const [newColName, setNewColName] = useState('');
+  const [editingColId, setEditingColId] = useState<number | null>(null);
+  const [editingColName, setEditingColName] = useState('');
+  const newColInputRef = useRef<HTMLInputElement>(null);
+  const editColInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (addingCol) newColInputRef.current?.focus();
+  }, [addingCol]);
+
+  useEffect(() => {
+    if (editingColId !== null) editColInputRef.current?.focus();
+  }, [editingColId]);
 
   const invalidateBoard = () => {
-    if (activeBoardId) queryClient.invalidateQueries({ queryKey: getGetBoardQueryKey(activeBoardId) });
-    queryClient.invalidateQueries({ queryKey: getListBoardsQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetBoardQueryKey(boardId) });
   };
 
   const handleDragEnd = async (result: DropResult) => {
     if (!result.destination || !board) return;
-    const destColId = parseInt(result.destination.droppableId, 10);
-    const taskId = parseInt(result.draggableId, 10);
-    await updateTask.mutateAsync({
-      id: taskId,
-      data: { columnId: destColId, position: result.destination.index }
-    });
-    invalidateBoard();
+
+    if (result.type === 'COLUMN') {
+      const colId = parseInt(result.draggableId.replace('col-', ''), 10);
+      await updateCol.mutateAsync({ id: colId, data: { position: result.destination.index } });
+      invalidateBoard();
+    } else {
+      const taskId = parseInt(result.draggableId, 10);
+      const destColId = parseInt(result.destination.droppableId, 10);
+      await updateTask.mutateAsync({ id: taskId, data: { columnId: destColId, position: result.destination.index } });
+      invalidateBoard();
+    }
   };
 
   const openTaskDialog = (columnId: number) => {
@@ -66,11 +85,11 @@ export function KanbanBoard() {
   };
 
   const handleCreateTask = async () => {
-    if (!taskTitle.trim() || !taskDialog.columnId || !activeBoardId) return;
+    if (!taskTitle.trim() || !taskDialog.columnId) return;
     const tags = taskTags.split(',').map(t => t.trim()).filter(Boolean);
     await createTask.mutateAsync({
       data: {
-        boardId: activeBoardId,
+        boardId,
         columnId: taskDialog.columnId,
         title: taskTitle.trim(),
         description: taskDesc || undefined,
@@ -87,16 +106,32 @@ export function KanbanBoard() {
     invalidateBoard();
   };
 
-  const handleCreateBoard = async () => {
-    if (!boardName.trim()) return;
-    const newBoard = await createBoard.mutateAsync({ data: { name: boardName.trim() } });
-    queryClient.invalidateQueries({ queryKey: getListBoardsQueryKey() });
-    setSelectedBoardId((newBoard as any).id);
-    setNewBoardDialog(false);
-    setBoardName('');
+  const handleAddColumn = async () => {
+    if (!newColName.trim()) { setAddingCol(false); return; }
+    await createCol.mutateAsync({ boardId, data: { name: newColName.trim() } });
+    invalidateBoard();
+    setNewColName('');
+    setAddingCol(false);
   };
 
-  if (boardsLoading) {
+  const handleDeleteColumn = async (id: number) => {
+    await deleteCol.mutateAsync({ id });
+    invalidateBoard();
+  };
+
+  const startEditCol = (id: number, currentName: string) => {
+    setEditingColId(id);
+    setEditingColName(currentName);
+  };
+
+  const handleRenameColumn = async () => {
+    if (!editingColId || !editingColName.trim()) { setEditingColId(null); return; }
+    await updateCol.mutateAsync({ id: editingColId, data: { name: editingColName.trim() } });
+    invalidateBoard();
+    setEditingColId(null);
+  };
+
+  if (boardLoading) {
     return (
       <div className="flex gap-4 overflow-x-auto pb-4">
         {[1, 2, 3].map(i => (
@@ -112,130 +147,197 @@ export function KanbanBoard() {
     );
   }
 
+  if (!board) return null;
+
   return (
     <div>
-      {/* Board selector toolbar */}
-      <div className="flex items-center gap-3 mb-4 flex-wrap">
-        {boards?.map(b => (
-          <button
-            key={b.id}
-            onClick={() => setSelectedBoardId(b.id)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium border transition-colors ${
-              activeBoardId === b.id
-                ? 'bg-primary/20 border-primary/50 text-primary'
-                : 'border-border/60 text-muted-foreground hover:border-primary/30 hover:text-foreground'
-            }`}
-          >
-            <Columns2 className="w-3.5 h-3.5" />
-            {b.name}
-          </button>
-        ))}
-        <Button size="sm" variant="outline" className="h-8 gap-1.5" onClick={() => setNewBoardDialog(true)}>
-          <Plus className="w-3.5 h-3.5" /> New Board
-        </Button>
-      </div>
-
-      {boardLoading && (
-        <div className="flex gap-4">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="w-72 flex-shrink-0 bg-muted/20 rounded-lg p-4">
-              <Skeleton className="h-6 w-32 mb-4" />
-              <Skeleton className="h-20 w-full" />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {!boardLoading && !board && (
-        <div className="text-center py-16 text-muted-foreground">
-          <Columns2 className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p>No board selected. Create one to get started.</p>
-        </div>
-      )}
-
-      {board && !boardLoading && (
-        <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="flex gap-4 overflow-x-auto pb-4 items-start" style={{ minHeight: 'calc(100vh - 320px)' }}>
-            {board.columns.map((column) => (
-              <div key={column.id} className="w-72 flex-shrink-0 bg-card border border-border rounded-lg flex flex-col">
-                <div className="p-3 border-b border-border flex items-center justify-between">
-                  <span className="font-medium text-sm">{column.name}</span>
-                  <Badge variant="secondary" className="text-xs">{column.tasks.length}</Badge>
-                </div>
-
-                <Droppable droppableId={column.id.toString()}>
-                  {(provided, snapshot) => (
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <Droppable droppableId="all-columns" direction="horizontal" type="COLUMN">
+          {(provided) => (
+            <div
+              ref={provided.innerRef}
+              {...provided.droppableProps}
+              className="flex gap-4 overflow-x-auto pb-4 items-start"
+              style={{ minHeight: 'calc(100vh - 340px)' }}
+            >
+              {[...board.columns].sort((a, b) => a.position - b.position).map((column, colIndex) => (
+                <Draggable key={column.id} draggableId={`col-${column.id}`} index={colIndex}>
+                  {(colProvided, colSnapshot) => (
                     <div
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      className={`p-2 flex-1 space-y-2 min-h-[80px] transition-colors ${snapshot.isDraggingOver ? 'bg-primary/5' : ''}`}
+                      ref={colProvided.innerRef}
+                      {...colProvided.draggableProps}
+                      className={`w-72 flex-shrink-0 bg-card border border-border rounded-lg flex flex-col transition-shadow ${colSnapshot.isDragging ? 'shadow-xl ring-1 ring-primary/30' : ''}`}
                     >
-                      {column.tasks.map((task, index) => (
-                        <Draggable key={task.id} draggableId={task.id.toString()} index={index}>
-                          {(provided, snapshot) => (
-                            <Card
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              className={`cursor-grab active:cursor-grabbing group transition-shadow ${
-                                snapshot.isDragging ? 'ring-1 ring-primary shadow-lg shadow-primary/10 scale-[1.02]' : 'hover:border-border/80'
-                              }`}
-                            >
-                              <CardContent className="p-3">
-                                <div className="flex justify-between items-start gap-2 mb-1">
-                                  <span className="font-medium text-sm leading-snug flex-1">{task.title}</span>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }}
-                                    className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive flex-shrink-0"
+                      {/* Column header */}
+                      <div className="p-2.5 border-b border-border flex items-center gap-1.5 group/col">
+                        <span
+                          {...colProvided.dragHandleProps}
+                          className="text-muted-foreground/40 hover:text-muted-foreground cursor-grab active:cursor-grabbing flex-shrink-0"
+                        >
+                          <GripVertical className="w-3.5 h-3.5" />
+                        </span>
+
+                        {editingColId === column.id ? (
+                          <Input
+                            ref={editColInputRef}
+                            value={editingColName}
+                            onChange={e => setEditingColName(e.target.value)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') handleRenameColumn();
+                              if (e.key === 'Escape') setEditingColId(null);
+                            }}
+                            className="h-6 text-sm py-0 px-1.5 flex-1 border-border/60"
+                          />
+                        ) : (
+                          <span
+                            className="font-medium text-sm flex-1 truncate cursor-pointer"
+                            onDoubleClick={() => startEditCol(column.id, column.name)}
+                            title="Double-click to rename"
+                          >
+                            {column.name}
+                          </span>
+                        )}
+
+                        <Badge variant="secondary" className="text-xs flex-shrink-0">{column.tasks.length}</Badge>
+
+                        {editingColId === column.id ? (
+                          <button
+                            onClick={handleRenameColumn}
+                            className="text-emerald-400 hover:text-emerald-300 flex-shrink-0"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => startEditCol(column.id, column.name)}
+                            className="opacity-0 group-hover/col:opacity-100 transition-opacity text-muted-foreground hover:text-foreground flex-shrink-0"
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => handleDeleteColumn(column.id)}
+                          className="opacity-0 group-hover/col:opacity-100 transition-opacity text-muted-foreground hover:text-destructive flex-shrink-0"
+                          title="Delete column"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Tasks */}
+                      <Droppable droppableId={column.id.toString()} type="TASK">
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                            className={`p-2 flex-1 space-y-2 min-h-[80px] transition-colors ${snapshot.isDraggingOver ? 'bg-primary/5' : ''}`}
+                          >
+                            {[...column.tasks].sort((a, b) => a.position - b.position).map((task, index) => (
+                              <Draggable key={task.id} draggableId={task.id.toString()} index={index}>
+                                {(provided, snapshot) => (
+                                  <Card
+                                    ref={provided.innerRef}
+                                    {...provided.draggableProps}
+                                    {...provided.dragHandleProps}
+                                    className={`cursor-grab active:cursor-grabbing group transition-shadow ${
+                                      snapshot.isDragging ? 'ring-1 ring-primary shadow-lg shadow-primary/10 scale-[1.02]' : 'hover:border-border/80'
+                                    }`}
                                   >
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                </div>
-                                {task.description && (
-                                  <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{task.description}</p>
+                                    <CardContent className="p-3">
+                                      <div className="flex justify-between items-start gap-2 mb-1">
+                                        <span className="font-medium text-sm leading-snug flex-1">{task.title}</span>
+                                        <button
+                                          onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }}
+                                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive flex-shrink-0"
+                                        >
+                                          <Trash2 className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                      {task.description && (
+                                        <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{task.description}</p>
+                                      )}
+                                      {task.tags && task.tags.length > 0 && (
+                                        <div className="flex gap-1 flex-wrap mb-2">
+                                          {task.tags.map(tag => (
+                                            <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-border/50">{tag}</Badge>
+                                          ))}
+                                        </div>
+                                      )}
+                                      <div className="flex justify-between items-center">
+                                        {task.priority ? (
+                                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium uppercase ${PRIORITY_COLORS[task.priority]}`}>
+                                            {task.priority}
+                                          </span>
+                                        ) : <span />}
+                                        {task.assigneeUsername && (
+                                          <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[9px] font-bold text-primary">
+                                            {task.assigneeUsername.charAt(0).toUpperCase()}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </CardContent>
+                                  </Card>
                                 )}
-                                {task.tags && task.tags.length > 0 && (
-                                  <div className="flex gap-1 flex-wrap mb-2">
-                                    {task.tags.map(tag => (
-                                      <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-border/50">{tag}</Badge>
-                                    ))}
-                                  </div>
-                                )}
-                                <div className="flex justify-between items-center">
-                                  {task.priority ? (
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium uppercase ${PRIORITY_COLORS[task.priority]}`}>
-                                      {task.priority}
-                                    </span>
-                                  ) : <span />}
-                                  {task.assigneeUsername && (
-                                    <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[9px] font-bold text-primary">
-                                      {task.assigneeUsername.charAt(0).toUpperCase()}
-                                    </div>
-                                  )}
-                                </div>
-                              </CardContent>
-                            </Card>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
+                              </Draggable>
+                            ))}
+                            {provided.placeholder}
+                          </div>
+                        )}
+                      </Droppable>
+
+                      {/* Add task button */}
+                      <div className="p-2 border-t border-border/50">
+                        <button
+                          onClick={() => openTaskDialog(column.id)}
+                          className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors"
+                        >
+                          <Plus className="w-3.5 h-3.5" /> Add task
+                        </button>
+                      </div>
                     </div>
                   )}
-                </Droppable>
+                </Draggable>
+              ))}
+              {provided.placeholder}
 
-                <div className="p-2 border-t border-border/50">
+              {/* Add column */}
+              <div className="w-72 flex-shrink-0">
+                {addingCol ? (
+                  <div className="bg-card border border-border rounded-lg p-3 space-y-2">
+                    <Input
+                      ref={newColInputRef}
+                      placeholder="Column name"
+                      value={newColName}
+                      onChange={e => setNewColName(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') handleAddColumn();
+                        if (e.key === 'Escape') { setAddingCol(false); setNewColName(''); }
+                      }}
+                      className="h-8 text-sm"
+                    />
+                    <div className="flex gap-2">
+                      <Button size="sm" className="flex-1 h-7 text-xs" onClick={handleAddColumn} disabled={createCol.isPending}>
+                        Add
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setAddingCol(false); setNewColName(''); }}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
                   <button
-                    onClick={() => openTaskDialog(column.id)}
-                    className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors"
+                    onClick={() => setAddingCol(true)}
+                    className="w-full flex items-center gap-2 py-3 px-4 rounded-lg border border-dashed border-border/60 text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors"
                   >
-                    <Plus className="w-3.5 h-3.5" /> Add task
+                    <Plus className="w-4 h-4" /> Add Column
                   </button>
-                </div>
+                )}
               </div>
-            ))}
-          </div>
-        </DragDropContext>
-      )}
+            </div>
+          )}
+        </Droppable>
+      </DragDropContext>
 
       {/* New Task Dialog */}
       <Dialog open={taskDialog.open} onOpenChange={(open) => setTaskDialog({ open, columnId: open ? taskDialog.columnId : null })}>
@@ -277,27 +379,6 @@ export function KanbanBoard() {
             </div>
             <Button className="w-full" onClick={handleCreateTask} disabled={createTask.isPending || !taskTitle.trim()}>
               {createTask.isPending ? 'Creating...' : 'Create Task'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* New Board Dialog */}
-      <Dialog open={newBoardDialog} onOpenChange={setNewBoardDialog}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>New Board</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 pt-1">
-            <Input
-              placeholder="Board name"
-              value={boardName}
-              onChange={e => setBoardName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleCreateBoard()}
-              autoFocus
-            />
-            <Button className="w-full" onClick={handleCreateBoard} disabled={createBoard.isPending || !boardName.trim()}>
-              {createBoard.isPending ? 'Creating...' : 'Create Board'}
             </Button>
           </div>
         </DialogContent>

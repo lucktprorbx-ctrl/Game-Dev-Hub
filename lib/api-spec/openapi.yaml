@@ -377,6 +377,70 @@ paths:
         "204":
           description: Deleted
 
+  /planning/boards/{boardId}/columns:
+    post:
+      operationId: createBoardColumn
+      tags: [planning]
+      summary: Add a column to a board
+      parameters:
+        - name: boardId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ColumnInput"
+      responses:
+        "201":
+          description: Created column
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BoardColumn"
+
+  /planning/columns/{id}:
+    patch:
+      operationId: updateBoardColumn
+      tags: [planning]
+      summary: Rename or reorder a column
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ColumnUpdate"
+      responses:
+        "200":
+          description: Updated column
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BoardColumn"
+
+    delete:
+      operationId: deleteBoardColumn
+      tags: [planning]
+      summary: Delete a column and its tasks
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
   /planning/tasks:
     get:
       operationId: listTasks
@@ -557,6 +621,25 @@ paths:
       responses:
         "204":
           description: Deleted
+
+  /groups/{groupId}:
+    get:
+      operationId: getGroupInfo
+      tags: [groups]
+      summary: Get Roblox group info with games and stats
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Group info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupInfo"
 
 components:
   schemas:
@@ -993,3 +1076,62 @@ components:
           type: ["integer", "null"]
         allDay:
           type: boolean
+
+    ColumnInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        position:
+          type: integer
+
+    ColumnUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        position:
+          type: integer
+
+    RobloxGame:
+      type: object
+      required: [universeId, name]
+      properties:
+        universeId:
+          type: integer
+        rootPlaceId:
+          type: ["integer", "null"]
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        playing:
+          type: integer
+        visits:
+          type: integer
+        favoritedCount:
+          type: integer
+        isPrivate:
+          type: boolean
+        thumbnailUrl:
+          type: ["string", "null"]
+
+    GroupInfo:
+      type: object
+      required: [id, name, memberCount, games]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        memberCount:
+          type: integer
+        thumbnailUrl:
+          type: ["string", "null"]
+        games:
+          type: array
+          items:
+            $ref: "#/components/schemas/RobloxGame"

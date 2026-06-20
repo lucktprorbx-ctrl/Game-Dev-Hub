@@ -350,6 +350,47 @@ export const DeleteBoardParams = zod.object({
 
 
 /**
+ * @summary Add a column to a board
+ */
+export const CreateBoardColumnParams = zod.object({
+  "boardId": zod.coerce.number()
+})
+
+export const CreateBoardColumnBody = zod.object({
+  "name": zod.string(),
+  "position": zod.number().optional()
+})
+
+
+/**
+ * @summary Rename or reorder a column
+ */
+export const UpdateBoardColumnParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateBoardColumnBody = zod.object({
+  "name": zod.string().optional(),
+  "position": zod.number().optional()
+})
+
+export const UpdateBoardColumnResponse = zod.object({
+  "id": zod.number(),
+  "boardId": zod.number(),
+  "name": zod.string(),
+  "position": zod.number()
+})
+
+
+/**
+ * @summary Delete a column and its tasks
+ */
+export const DeleteBoardColumnParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
  * @summary List tasks, optionally filtered by board
  */
 export const ListTasksQueryParams = zod.object({
@@ -524,6 +565,33 @@ export const UpdateEventResponse = zod.object({
  */
 export const DeleteEventParams = zod.object({
   "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Get Roblox group info with games and stats
+ */
+export const GetGroupInfoParams = zod.object({
+  "groupId": zod.coerce.string()
+})
+
+export const GetGroupInfoResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "memberCount": zod.number(),
+  "thumbnailUrl": zod.string().nullish(),
+  "games": zod.array(zod.object({
+  "universeId": zod.number(),
+  "rootPlaceId": zod.number().nullish(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "playing": zod.number().optional(),
+  "visits": zod.number().optional(),
+  "favoritedCount": zod.number().optional(),
+  "isPrivate": zod.boolean().optional(),
+  "thumbnailUrl": zod.string().nullish()
+}))
 })
 
 

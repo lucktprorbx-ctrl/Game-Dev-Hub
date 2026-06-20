@@ -21,6 +21,11 @@ import {
   CreateEventBody,
 } from "@workspace/api-zod";
 
+function parseIntParam(val: unknown): number | null {
+  const n = Number(val);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
 const router: IRouter = Router();
 
 function serializeBoard(b: typeof boardsTable.$inferSelect) {
@@ -134,6 +139,51 @@ router.delete("/planning/boards/:id", requireAuth, async (req, res): Promise<voi
   }
   res.sendStatus(204);
 });
+
+// ── Column CRUD ──────────────────────────────────────────────────────────────
+
+router.post("/planning/boards/:boardId/columns", requireAuth, async (req, res): Promise<void> => {
+  const boardId = parseIntParam(req.params["boardId"]);
+  if (!boardId) { res.status(400).json({ error: "Invalid boardId" }); return; }
+  const { name, position: posInput } = req.body as { name?: unknown; position?: unknown };
+  if (typeof name !== "string" || !name.trim()) { res.status(400).json({ error: "name is required" }); return; }
+
+  let position: number;
+  if (posInput !== undefined && typeof posInput === "number") {
+    position = Math.floor(posInput);
+  } else {
+    const cols = await db.select().from(boardColumnsTable).where(eq(boardColumnsTable.boardId, boardId));
+    position = cols.length;
+  }
+
+  const [col] = await db.insert(boardColumnsTable).values({ boardId, name: name.trim(), position }).returning();
+  res.status(201).json(col);
+});
+
+router.patch("/planning/columns/:id", requireAuth, async (req, res): Promise<void> => {
+  const id = parseIntParam(req.params["id"]);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+  const { name, position } = req.body as { name?: unknown; position?: unknown };
+  const update: Record<string, unknown> = {};
+  if (typeof name === "string" && name.trim()) update["name"] = name.trim();
+  if (typeof position === "number") update["position"] = Math.floor(position);
+  if (Object.keys(update).length === 0) { res.status(400).json({ error: "Nothing to update" }); return; }
+
+  const [col] = await db.update(boardColumnsTable).set(update as any).where(eq(boardColumnsTable.id, id)).returning();
+  if (!col) { res.status(404).json({ error: "Column not found" }); return; }
+  res.json(col);
+});
+
+router.delete("/planning/columns/:id", requireAuth, async (req, res): Promise<void> => {
+  const id = parseIntParam(req.params["id"]);
+  if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
+
+  const [col] = await db.delete(boardColumnsTable).where(eq(boardColumnsTable.id, id)).returning();
+  if (!col) { res.status(404).json({ error: "Column not found" }); return; }
+  res.sendStatus(204);
+});
+
+// ── Tasks ─────────────────────────────────────────────────────────────────────
 
 router.get("/planning/tasks", requireAuth, async (req, res): Promise<void> => {
   const query = ListTasksQueryParams.safeParse(req.query);

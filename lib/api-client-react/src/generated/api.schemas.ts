@@ -304,6 +304,42 @@ export interface CalendarEventUpdate {
   allDay?: boolean;
 }
 
+export interface ColumnInput {
+  name: string;
+  position?: number;
+}
+
+export interface ColumnUpdate {
+  name?: string;
+  position?: number;
+}
+
+export interface RobloxGame {
+  universeId: number;
+  /** @nullable */
+  rootPlaceId?: number | null;
+  name: string;
+  /** @nullable */
+  description?: string | null;
+  playing?: number;
+  visits?: number;
+  favoritedCount?: number;
+  isPrivate?: boolean;
+  /** @nullable */
+  thumbnailUrl?: string | null;
+}
+
+export interface GroupInfo {
+  id: number;
+  name: string;
+  /** @nullable */
+  description?: string | null;
+  memberCount: number;
+  /** @nullable */
+  thumbnailUrl?: string | null;
+  games: RobloxGame[];
+}
+
 export type ListTasksParams = {
 boardId?: number;
 };

@@ -21,17 +21,21 @@ import type {
 
 import type {
   Board,
+  BoardColumn,
   BoardDetail,
   BoardInput,
   BoardUpdate,
   CalendarEvent,
   CalendarEventInput,
   CalendarEventUpdate,
+  ColumnInput,
+  ColumnUpdate,
   DashboardSummary,
   Game,
   GameInput,
   GameStats,
   GameUpdate,
+  GroupInfo,
   HealthStatus,
   ListEventsParams,
   ListTasksParams,
@@ -1612,6 +1616,220 @@ export const useDeleteBoard = <TError = ErrorType<unknown>,
       return useMutation(getDeleteBoardMutationOptions(options));
     }
 
+export const getCreateBoardColumnUrl = (boardId: number,) => {
+
+
+
+
+  return `/api/planning/boards/${boardId}/columns`
+}
+
+/**
+ * @summary Add a column to a board
+ */
+export const createBoardColumn = async (boardId: number,
+    columnInput: ColumnInput, options?: RequestInit): Promise<BoardColumn> => {
+
+  return customFetch<BoardColumn>(getCreateBoardColumnUrl(boardId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      columnInput,)
+  }
+);}
+
+
+
+
+export const getCreateBoardColumnMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBoardColumn>>, TError,{boardId: number;data: BodyType<ColumnInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createBoardColumn>>, TError,{boardId: number;data: BodyType<ColumnInput>}, TContext> => {
+
+const mutationKey = ['createBoardColumn'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createBoardColumn>>, {boardId: number;data: BodyType<ColumnInput>}> = (props) => {
+          const {boardId,data} = props ?? {};
+
+          return  createBoardColumn(boardId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateBoardColumnMutationResult = NonNullable<Awaited<ReturnType<typeof createBoardColumn>>>
+    export type CreateBoardColumnMutationBody = BodyType<ColumnInput>
+    export type CreateBoardColumnMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Add a column to a board
+ */
+export const useCreateBoardColumn = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createBoardColumn>>, TError,{boardId: number;data: BodyType<ColumnInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createBoardColumn>>,
+        TError,
+        {boardId: number;data: BodyType<ColumnInput>},
+        TContext
+      > => {
+      return useMutation(getCreateBoardColumnMutationOptions(options));
+    }
+
+export const getUpdateBoardColumnUrl = (id: number,) => {
+
+
+
+
+  return `/api/planning/columns/${id}`
+}
+
+/**
+ * @summary Rename or reorder a column
+ */
+export const updateBoardColumn = async (id: number,
+    columnUpdate: ColumnUpdate, options?: RequestInit): Promise<BoardColumn> => {
+
+  return customFetch<BoardColumn>(getUpdateBoardColumnUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      columnUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateBoardColumnMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBoardColumn>>, TError,{id: number;data: BodyType<ColumnUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateBoardColumn>>, TError,{id: number;data: BodyType<ColumnUpdate>}, TContext> => {
+
+const mutationKey = ['updateBoardColumn'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateBoardColumn>>, {id: number;data: BodyType<ColumnUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateBoardColumn(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateBoardColumnMutationResult = NonNullable<Awaited<ReturnType<typeof updateBoardColumn>>>
+    export type UpdateBoardColumnMutationBody = BodyType<ColumnUpdate>
+    export type UpdateBoardColumnMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Rename or reorder a column
+ */
+export const useUpdateBoardColumn = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateBoardColumn>>, TError,{id: number;data: BodyType<ColumnUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateBoardColumn>>,
+        TError,
+        {id: number;data: BodyType<ColumnUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateBoardColumnMutationOptions(options));
+    }
+
+export const getDeleteBoardColumnUrl = (id: number,) => {
+
+
+
+
+  return `/api/planning/columns/${id}`
+}
+
+/**
+ * @summary Delete a column and its tasks
+ */
+export const deleteBoardColumn = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteBoardColumnUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteBoardColumnMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteBoardColumn>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteBoardColumn>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteBoardColumn'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteBoardColumn>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteBoardColumn(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteBoardColumnMutationResult = NonNullable<Awaited<ReturnType<typeof deleteBoardColumn>>>
+
+    export type DeleteBoardColumnMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete a column and its tasks
+ */
+export const useDeleteBoardColumn = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteBoardColumn>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteBoardColumn>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteBoardColumnMutationOptions(options));
+    }
+
 export const getListTasksUrl = (params?: ListTasksParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -2282,4 +2500,81 @@ export const useDeleteEvent = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getDeleteEventMutationOptions(options));
     }
+
+export const getGetGroupInfoUrl = (groupId: string,) => {
+
+
+
+
+  return `/api/groups/${groupId}`
+}
+
+/**
+ * @summary Get Roblox group info with games and stats
+ */
+export const getGroupInfo = async (groupId: string, options?: RequestInit): Promise<GroupInfo> => {
+
+  return customFetch<GroupInfo>(getGetGroupInfoUrl(groupId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGroupInfoQueryKey = (groupId: string,) => {
+    return [
+    `/api/groups/${groupId}`
+    ] as const;
+    }
+
+
+export const getGetGroupInfoQueryOptions = <TData = Awaited<ReturnType<typeof getGroupInfo>>, TError = ErrorType<unknown>>(groupId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGroupInfo>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGroupInfoQueryKey(groupId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGroupInfo>>> = ({ signal }) => getGroupInfo(groupId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(groupId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGroupInfo>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGroupInfoQueryResult = NonNullable<Awaited<ReturnType<typeof getGroupInfo>>>
+export type GetGroupInfoQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get Roblox group info with games and stats
+ */
+
+export function useGetGroupInfo<TData = Awaited<ReturnType<typeof getGroupInfo>>, TError = ErrorType<unknown>>(
+ groupId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGroupInfo>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGroupInfoQueryOptions(groupId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
 
