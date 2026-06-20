@@ -2,15 +2,16 @@ import { useListUsers, useUpdateUser, useCreateUser, useDeleteUser, getListUsers
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { PageTransition } from '@/components/ui/page-transition';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { useQueryClient } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Shield, Users2, UserPlus, Trash2, AlertCircle } from 'lucide-react';
+import { Shield, Users2, UserPlus, Trash2, AlertCircle, CheckCircle2, Ban } from 'lucide-react';
 
 function RoleBadge({ role }: { role: string }) {
   if (role === 'admin') {
@@ -54,6 +55,37 @@ export default function Users() {
   const [newRole, setNewRole] = useState<'admin' | 'collaborator'>('collaborator');
   const [addError, setAddError] = useState('');
   const [addLoading, setAddLoading] = useState(false);
+
+  // Roblox profile preview state
+  type RobloxPreview = { robloxId: string; username: string; displayName: string | null; avatarUrl: string | null; isBanned: boolean };
+  const [preview, setPreview] = useState<RobloxPreview | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState('');
+  const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+    const id = newRobloxId.trim();
+    if (!id || id.length < 4) { setPreview(null); setPreviewError(''); setPreviewLoading(false); return; }
+    setPreviewLoading(true);
+    setPreviewError('');
+    setPreview(null);
+    previewTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/users/preview/${id}`);
+        const data = await res.json();
+        if (!res.ok) { setPreviewError(data.error ?? 'User not found'); setPreview(null); }
+        else setPreview(data as RobloxPreview);
+      } catch { setPreviewError('Failed to fetch profile'); }
+      finally { setPreviewLoading(false); }
+    }, 600);
+    return () => { if (previewTimerRef.current) clearTimeout(previewTimerRef.current); };
+  }, [newRobloxId]);
+
+  const resetAddDialog = () => {
+    setNewRobloxId(''); setNewRole('collaborator'); setAddError('');
+    setPreview(null); setPreviewError(''); setPreviewLoading(false);
+  };
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
 
@@ -195,7 +227,7 @@ export default function Users() {
       </Card>
 
       {/* Add User Dialog */}
-      <Dialog open={addDialogOpen} onOpenChange={(open) => { setAddDialogOpen(open); if (!open) { setAddError(''); setNewRobloxId(''); } }}>
+      <Dialog open={addDialogOpen} onOpenChange={(open) => { setAddDialogOpen(open); if (!open) resetAddDialog(); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -206,7 +238,7 @@ export default function Users() {
             <div>
               <label className="text-sm font-medium mb-1.5 block">
                 Roblox User ID <span className="text-destructive">*</span>
-                <span className="text-xs text-muted-foreground font-normal ml-1">(numeric ID, not username)</span>
+                <span className="text-xs text-muted-foreground font-normal ml-1">(numeric ID)</span>
               </label>
               <Input
                 placeholder="e.g. 454458772"
@@ -216,9 +248,65 @@ export default function Users() {
                 autoFocus
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Find it at roblox.com/users/[ID]/profile or via Roblox profile settings.
+                roblox.com/users/<strong>[ID]</strong>/profile
               </p>
             </div>
+
+            {/* Profile preview */}
+            {newRobloxId.length >= 4 && (
+              <div className="rounded-lg border border-border/60 overflow-hidden">
+                {previewLoading && (
+                  <div className="flex items-center gap-3 p-3 bg-muted/10">
+                    <Skeleton className="w-16 h-16 rounded-lg flex-shrink-0" />
+                    <div className="space-y-2 flex-1">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-24" />
+                      <Skeleton className="h-3 w-16" />
+                    </div>
+                  </div>
+                )}
+                {!previewLoading && preview && (
+                  <div className="flex items-center gap-3 p-3 bg-muted/10">
+                    {preview.avatarUrl ? (
+                      <img
+                        src={preview.avatarUrl}
+                        alt={preview.username}
+                        className="w-16 h-16 rounded-lg object-cover bg-muted flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-2xl flex-shrink-0">
+                        {preview.username.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <div className="font-semibold truncate">
+                        {preview.displayName || preview.username}
+                      </div>
+                      {preview.displayName && (
+                        <div className="text-xs text-muted-foreground">@{preview.username}</div>
+                      )}
+                      <div className="text-xs text-muted-foreground/60 mt-0.5">ID: {preview.robloxId}</div>
+                      {preview.isBanned ? (
+                        <div className="flex items-center gap-1 mt-1 text-xs text-destructive">
+                          <Ban className="w-3 h-3" /> Account banned
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 mt-1 text-xs text-emerald-400">
+                          <CheckCircle2 className="w-3 h-3" /> Profile found
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {!previewLoading && previewError && (
+                  <div className="flex items-center gap-2 p-3 text-sm text-destructive bg-destructive/5">
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    {previewError}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div>
               <label className="text-sm font-medium mb-1.5 block">Role</label>
               <Select value={newRole} onValueChange={(v: 'admin' | 'collaborator') => setNewRole(v)}>
@@ -241,8 +329,8 @@ export default function Users() {
                 {addError}
               </div>
             )}
-            <Button className="w-full" onClick={handleAddUser} disabled={addLoading || !newRobloxId.trim()}>
-              {addLoading ? 'Fetching Roblox profile...' : 'Add User'}
+            <Button className="w-full" onClick={handleAddUser} disabled={addLoading || !newRobloxId.trim() || previewLoading}>
+              {addLoading ? 'Adding...' : 'Add User'}
             </Button>
           </div>
         </DialogContent>

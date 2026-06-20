@@ -51,6 +51,40 @@ async function fetchRobloxProfile(robloxId: string): Promise<{
   }
 }
 
+router.get("/users/preview/:robloxId", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+  const { robloxId } = req.params;
+  if (!robloxId || !/^\d+$/.test(robloxId)) {
+    res.status(400).json({ error: "Invalid Roblox ID" });
+    return;
+  }
+  try {
+    const [userRes, avatarRes] = await Promise.all([
+      fetch(`https://users.roblox.com/v1/users/${robloxId}`),
+      fetch(`https://thumbnails.roblox.com/v1/users/avatar-bust?userIds=${robloxId}&size=420x420&format=Png`),
+    ]);
+    if (!userRes.ok) {
+      res.status(404).json({ error: "Roblox user not found" });
+      return;
+    }
+    const userData = await userRes.json() as { name?: string; displayName?: string; isBanned?: boolean };
+    let avatarUrl: string | null = null;
+    if (avatarRes.ok) {
+      const d = await avatarRes.json() as { data?: Array<{ imageUrl?: string }> };
+      avatarUrl = d.data?.[0]?.imageUrl ?? null;
+    }
+    res.json({
+      robloxId,
+      username: userData.name ?? robloxId,
+      displayName: userData.displayName ?? null,
+      avatarUrl,
+      isBanned: userData.isBanned ?? false,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch Roblox profile preview");
+    res.status(500).json({ error: "Failed to fetch profile" });
+  }
+});
+
 router.get("/users", requireAuth, requireAdmin, async (_req, res): Promise<void> => {
   const users = await db.select().from(usersTable).orderBy(usersTable.createdAt);
   res.json(users.map(serializeUser));
