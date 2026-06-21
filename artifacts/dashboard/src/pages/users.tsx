@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { PageTransition } from '@/components/ui/page-transition';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useState, useEffect, useRef } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -248,6 +248,200 @@ function TeamsManagement() {
   );
 }
 
+// ── Groups Management Component ───────────────────────────────────────────────
+
+const GROUP_COLORS = [
+  '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6',
+  '#10b981', '#ec4899', '#14b8a6', '#f97316',
+];
+
+type UserGroupMember = { id: number; username: string; displayName: string | null; avatarUrl: string | null };
+type UserGroup = { id: number; name: string; description: string | null; color: string; members: UserGroupMember[] };
+
+function GroupsManagement() {
+  const queryClient = useQueryClient();
+  const { data: users } = useListUsers();
+
+  const { data: groups, isLoading } = useQuery<UserGroup[]>({
+    queryKey: ['user-groups'],
+    queryFn: () => fetch('/api/user-groups').then(r => r.json()),
+  });
+
+  const createGroup = useMutation({
+    mutationFn: (data: { name: string; color: string; description?: string }) =>
+      fetch('/api/user-groups', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json()),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['user-groups'] }),
+  });
+
+  const deleteGroup = useMutation({
+    mutationFn: (id: number) => fetch(`/api/user-groups/${id}`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['user-groups'] }),
+  });
+
+  const addMember = useMutation({
+    mutationFn: ({ groupId, userId }: { groupId: number; userId: number }) =>
+      fetch(`/api/user-groups/${groupId}/members`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId }) }).then(r => r.json()),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['user-groups'] }),
+  });
+
+  const removeMember = useMutation({
+    mutationFn: ({ groupId, userId }: { groupId: number; userId: number }) =>
+      fetch(`/api/user-groups/${groupId}/members/${userId}`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['user-groups'] }),
+  });
+
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupColor, setNewGroupColor] = useState(GROUP_COLORS[0]);
+  const [newGroupDesc, setNewGroupDesc] = useState('');
+  const [addMemberGroupId, setAddMemberGroupId] = useState<number | null>(null);
+  const [addMemberUserId, setAddMemberUserId] = useState('');
+
+  const handleCreateGroup = async () => {
+    if (!newGroupName.trim()) return;
+    await createGroup.mutateAsync({ name: newGroupName.trim(), color: newGroupColor, description: newGroupDesc.trim() || undefined });
+    setCreateDialogOpen(false);
+    setNewGroupName(''); setNewGroupDesc(''); setNewGroupColor(GROUP_COLORS[0]);
+  };
+
+  const handleAddMember = async () => {
+    if (!addMemberGroupId || !addMemberUserId) return;
+    await addMember.mutateAsync({ groupId: addMemberGroupId, userId: Number(addMemberUserId) });
+    setAddMemberUserId('');
+  };
+
+  const groupList = Array.isArray(groups) ? groups : [];
+  const userList = Array.isArray(users) ? users : [];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <p className="text-sm text-muted-foreground">Groups let you organise members independently of planning teams.</p>
+        <Button size="sm" className="gap-1.5" onClick={() => setCreateDialogOpen(true)}>
+          <Plus className="w-4 h-4" /> New Group
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1, 2].map(i => <Skeleton key={i} className="h-24 w-full" />)}
+        </div>
+      ) : groupList.length === 0 ? (
+        <Card><CardContent className="py-10 text-center text-muted-foreground text-sm">No groups yet. Create one to get started.</CardContent></Card>
+      ) : (
+        <div className="space-y-3">
+          {groupList.map(group => (
+            <Card key={group.id}>
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: group.color }} />
+                    <div>
+                      <div className="font-medium text-sm">{group.name}</div>
+                      {group.description && <div className="text-xs text-muted-foreground">{group.description}</div>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm" variant="ghost"
+                      className="h-7 text-xs gap-1.5"
+                      onClick={() => setAddMemberGroupId(group.id)}
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add
+                    </Button>
+                    <Button
+                      size="sm" variant="ghost"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                      onClick={() => deleteGroup.mutate(group.id)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Add member row */}
+                {addMemberGroupId === group.id && (
+                  <div className="mt-3 flex gap-2 border-t border-border/40 pt-3">
+                    <Select value={addMemberUserId} onValueChange={setAddMemberUserId}>
+                      <SelectTrigger className="h-8 text-xs flex-1">
+                        <SelectValue placeholder="Select a user…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {userList
+                          .filter(u => !group.members.some(m => m.id === u.id))
+                          .map(u => (
+                            <SelectItem key={u.id} value={String(u.id)}>
+                              {u.robloxDisplayName || u.robloxUsername}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    <Button size="sm" className="h-8 text-xs" onClick={handleAddMember} disabled={!addMemberUserId}>Add</Button>
+                    <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setAddMemberGroupId(null); setAddMemberUserId(''); }}>Cancel</Button>
+                  </div>
+                )}
+
+                {/* Members */}
+                {group.members.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {group.members.map(m => (
+                      <div key={m.id} className="flex items-center gap-1 bg-muted/40 rounded-full pl-0.5 pr-2 py-0.5">
+                        {m.avatarUrl
+                          ? <img src={m.avatarUrl} alt="" className="w-5 h-5 rounded-full" />
+                          : <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[9px] font-bold">{m.username.charAt(0)}</div>
+                        }
+                        <span className="text-xs">{m.displayName || m.username}</span>
+                        <button
+                          onClick={() => removeMember.mutate({ groupId: group.id, userId: m.id })}
+                          className="ml-0.5 text-muted-foreground hover:text-destructive transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Create group dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>New Group</DialogTitle></DialogHeader>
+          <div className="space-y-3 pt-1">
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Name *</label>
+              <Input placeholder="e.g. Art Team" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateGroup()} autoFocus />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Description</label>
+              <Input placeholder="Optional…" value={newGroupDesc} onChange={e => setNewGroupDesc(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1.5 flex items-center gap-1.5 block">
+                <Palette className="w-3.5 h-3.5 text-muted-foreground" /> Color
+              </label>
+              <div className="flex gap-2 flex-wrap">
+                {GROUP_COLORS.map(c => (
+                  <button key={c} onClick={() => setNewGroupColor(c)}
+                    className={`w-6 h-6 rounded-full transition-transform ${newGroupColor === c ? 'ring-2 ring-offset-2 ring-offset-background scale-110' : 'hover:scale-105'}`}
+                    style={{ backgroundColor: c }} />
+                ))}
+              </div>
+            </div>
+            <Button className="w-full" onClick={handleCreateGroup} disabled={createGroup.isPending || !newGroupName.trim()}>
+              {createGroup.isPending ? 'Creating…' : 'Create Group'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 // ── Main Users Page ───────────────────────────────────────────────────────────
 
 export default function Users() {
@@ -383,6 +577,11 @@ export default function Users() {
               <Shield className="w-3.5 h-3.5" /> Teams
             </TabsTrigger>
           )}
+          {isAdmin && (
+            <TabsTrigger value="groups" className="gap-1.5">
+              <Users2 className="w-3.5 h-3.5" /> Groups
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="members">
@@ -512,6 +711,17 @@ export default function Users() {
               transition={{ delay: 0.1, type: 'spring', stiffness: 200, damping: 22 }}
             >
               <TeamsManagement />
+            </motion.div>
+          </TabsContent>
+        )}
+        {isAdmin && (
+          <TabsContent value="groups">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, type: 'spring', stiffness: 200, damping: 22 }}
+            >
+              <GroupsManagement />
             </motion.div>
           </TabsContent>
         )}

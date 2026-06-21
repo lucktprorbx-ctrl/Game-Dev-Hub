@@ -5,6 +5,7 @@ import {
   useCreateBoard,
   useDeleteBoard,
   useListTeams,
+  useListUsers,
   getListBoardsQueryKey,
 } from '@workspace/api-client-react';
 import type { Team } from '@workspace/api-client-react';
@@ -19,7 +20,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Columns2, ArrowLeft, Trash2, CalendarDays, FileText, Users2, Lock, Globe } from 'lucide-react';
+import { Plus, Columns2, ArrowLeft, Trash2, CalendarDays, FileText, Users2, Lock, Globe, User } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -70,27 +72,38 @@ export default function Planning() {
 
   const { data: boardsData, isLoading } = useListBoards();
   const { data: teamsData } = useListTeams();
+  const { data: usersData } = useListUsers();
   const boards = Array.isArray(boardsData) ? boardsData : [];
   const teams = Array.isArray(teamsData) ? teamsData : [];
+  const allUsers = Array.isArray(usersData) ? usersData : [];
 
   const [selectedBoard, setSelectedBoard] = useState<SelectedBoard | null>(null);
   const [newBoardDialog, setNewBoardDialog] = useState(false);
   const [boardName, setBoardName] = useState('');
   const [boardTeamId, setBoardTeamId] = useState<string>('none');
+  const [boardVisibility, setBoardVisibility] = useState<'public' | 'team' | 'users'>('public');
+  const [boardAllowedUserIds, setBoardAllowedUserIds] = useState<number[]>([]);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const createBoard = useCreateBoard();
   const deleteBoard = useDeleteBoard();
   const queryClient = useQueryClient();
 
-  const handleCreateBoard = async () => {
-    if (!boardName.trim()) return;
-    const teamId = boardTeamId !== 'none' ? Number(boardTeamId) : undefined;
-    await createBoard.mutateAsync({ data: { name: boardName.trim(), ...(teamId ? { teamId } : {}) } as any });
-    queryClient.invalidateQueries({ queryKey: getListBoardsQueryKey() });
-    setNewBoardDialog(false);
+  const resetBoardDialog = () => {
     setBoardName('');
     setBoardTeamId('none');
+    setBoardVisibility('public');
+    setBoardAllowedUserIds([]);
+  };
+
+  const handleCreateBoard = async () => {
+    if (!boardName.trim()) return;
+    const teamId = boardVisibility === 'team' && boardTeamId !== 'none' ? Number(boardTeamId) : undefined;
+    const allowedUserIds = boardVisibility === 'users' ? boardAllowedUserIds : [];
+    await createBoard.mutateAsync({ data: { name: boardName.trim(), ...(teamId ? { teamId } : {}), allowedUserIds } as any });
+    queryClient.invalidateQueries({ queryKey: getListBoardsQueryKey() });
+    setNewBoardDialog(false);
+    resetBoardDialog();
   };
 
   const handleDeleteBoard = async (e: React.MouseEvent, id: number) => {
@@ -241,7 +254,7 @@ export default function Planning() {
         </div>
       )}
 
-      <Dialog open={newBoardDialog} onOpenChange={(o) => { setNewBoardDialog(o); if (!o) { setBoardName(''); setBoardTeamId('none'); } }}>
+      <Dialog open={newBoardDialog} onOpenChange={(o) => { setNewBoardDialog(o); if (!o) resetBoardDialog(); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>{t('planning.newBoardDialog')}</DialogTitle>
@@ -251,40 +264,81 @@ export default function Planning() {
               placeholder={t('planning.boardNamePlaceholder')}
               value={boardName}
               onChange={e => setBoardName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && !isAdmin && handleCreateBoard()}
+              onKeyDown={e => e.key === 'Enter' && boardVisibility !== 'users' && handleCreateBoard()}
               autoFocus
             />
-            {isAdmin && teams.length > 0 && (
+            {isAdmin && (
               <div>
-                <label className="text-sm font-medium mb-1.5 block flex items-center gap-1.5">
-                  <Users2 className="w-3.5 h-3.5 text-muted-foreground" />
-                  Team visibility
-                </label>
-                <Select value={boardTeamId} onValueChange={setBoardTeamId}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">
-                      <span className="flex items-center gap-2">
-                        <Globe className="w-3.5 h-3.5 text-muted-foreground" />
-                        Visible to everyone
-                      </span>
-                    </SelectItem>
-                    {teams.map(team => (
-                      <SelectItem key={team.id} value={String(team.id)}>
-                        <span className="flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: team.color }} />
-                          {team.name} only
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {boardTeamId === 'none'
-                    ? 'This board will be visible to all members.'
-                    : `Only admins and ${teams.find(t => String(t.id) === boardTeamId)?.name} members will see this board.`}
+                <label className="text-sm font-medium mb-2 block">Visibility</label>
+                <div className="grid grid-cols-3 gap-1.5 mb-2">
+                  {[
+                    { key: 'public', icon: Globe, label: 'Everyone' },
+                    { key: 'team', icon: Users2, label: 'Team' },
+                    { key: 'users', icon: User, label: 'Specific users' },
+                  ].map(({ key, icon: Icon, label }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setBoardVisibility(key as typeof boardVisibility)}
+                      className={`flex flex-col items-center gap-1 p-2 rounded-lg border text-xs transition-colors ${boardVisibility === key ? 'border-primary bg-primary/10 text-primary' : 'border-border/60 text-muted-foreground hover:border-border hover:text-foreground'}`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {boardVisibility === 'team' && teams.length > 0 && (
+                  <Select value={boardTeamId} onValueChange={setBoardTeamId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a team" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teams.map(team => (
+                        <SelectItem key={team.id} value={String(team.id)}>
+                          <span className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: team.color }} />
+                            {team.name}
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+
+                {boardVisibility === 'users' && allUsers.length > 0 && (
+                  <div className="border border-border/60 rounded-lg max-h-40 overflow-y-auto divide-y divide-border/30">
+                    {allUsers.map(u => {
+                      const selected = boardAllowedUserIds.includes(u.id);
+                      return (
+                        <button
+                          key={u.id}
+                          type="button"
+                          onClick={() => setBoardAllowedUserIds(prev => selected ? prev.filter(id => id !== u.id) : [...prev, u.id])}
+                          className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 text-left text-sm transition-colors hover:bg-muted/40 ${selected ? 'bg-muted/30' : ''}`}
+                        >
+                          {u.robloxAvatarUrl
+                            ? <img src={u.robloxAvatarUrl} alt="" className="w-5 h-5 rounded-full flex-shrink-0" />
+                            : <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[9px] font-bold flex-shrink-0">{u.robloxUsername.charAt(0)}</div>
+                          }
+                          <span className="text-xs flex-1 truncate">{u.robloxDisplayName || u.robloxUsername}</span>
+                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${selected ? 'bg-primary border-primary' : 'border-border/60'}`}>
+                            {selected && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <p className="text-[11px] text-muted-foreground mt-1.5">
+                  {boardVisibility === 'public' && 'All members will see this board.'}
+                  {boardVisibility === 'team' && (boardTeamId !== 'none'
+                    ? `Only admins and ${teams.find(t => String(t.id) === boardTeamId)?.name} members will see this board.`
+                    : 'Select a team above.')}
+                  {boardVisibility === 'users' && (boardAllowedUserIds.length > 0
+                    ? `${boardAllowedUserIds.length} user(s) + all admins will see this board.`
+                    : 'Select at least one user above.')}
                 </p>
               </div>
             )}

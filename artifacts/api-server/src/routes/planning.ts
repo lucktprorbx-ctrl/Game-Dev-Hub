@@ -10,14 +10,10 @@ import {
   ListTasksQueryParams,
   GetTaskParams,
   UpdateTaskParams,
-  UpdateTaskBody,
   DeleteTaskParams,
-  CreateTaskBody,
   ListEventsQueryParams,
   UpdateEventParams,
-  UpdateEventBody,
   DeleteEventParams,
-  CreateEventBody,
 } from "@workspace/api-zod";
 
 function parseIntParam(val: unknown): number | null {
@@ -44,18 +40,23 @@ function serializeUserInfo(u: DbUser | null | undefined) {
 }
 
 function serializeBoard(b: typeof boardsTable.$inferSelect, teamName?: string | null) {
-  return { ...b, teamName: teamName ?? null, createdAt: b.createdAt.toISOString() };
+  return {
+    ...b,
+    allowedUserIds: b.allowedUserIds ?? [],
+    teamName: teamName ?? null,
+    createdAt: b.createdAt.toISOString(),
+  };
 }
 
 function serializeTask(
   t: typeof tasksTable.$inferSelect,
-  assignee?: DbUser | null,
+  assignees: DbUser[],
   createdBy?: DbUser | null,
 ) {
   return {
     ...t,
-    assigneeUsername: assignee?.robloxUsername ?? null,
-    assignee: serializeUserInfo(assignee),
+    assigneeIds: t.assigneeIds ?? [],
+    assignees: assignees.map(serializeUserInfo),
     createdBy: serializeUserInfo(createdBy),
     createdAt: t.createdAt.toISOString(),
   };
@@ -63,12 +64,13 @@ function serializeTask(
 
 function serializeEvent(
   e: typeof calendarEventsTable.$inferSelect,
-  assignee?: DbUser | null,
+  attendees: DbUser[],
   createdBy?: DbUser | null,
 ) {
   return {
     ...e,
-    assignee: serializeUserInfo(assignee),
+    attendeeIds: e.attendeeIds ?? [],
+    attendees: attendees.map(serializeUserInfo),
     createdBy: serializeUserInfo(createdBy),
     startDate: e.startDate.toISOString(),
     endDate: e.endDate ? e.endDate.toISOString() : null,
@@ -106,12 +108,26 @@ async function getTeamNameMap(): Promise<Map<number, string>> {
   return new Map(teams.map(t => [t.id, t.name]));
 }
 
+// Resolve assignee IDs to user objects from a userMap
+function resolveUsers(ids: number[] | null | undefined, userMap: Map<number, DbUser>): DbUser[] {
+  if (!ids || ids.length === 0) return [];
+  return ids.map(id => userMap.get(id)).filter((u): u is DbUser => Boolean(u));
+}
+
 // Check if user can access a specific board
 async function canAccessBoard(userId: number, role: string, boardId: number): Promise<boolean> {
   if (role === "admin") return true;
-  const [board] = await db.select({ teamId: boardsTable.teamId }).from(boardsTable).where(eq(boardsTable.id, boardId));
+  const [board] = await db
+    .select({ teamId: boardsTable.teamId, allowedUserIds: boardsTable.allowedUserIds })
+    .from(boardsTable)
+    .where(eq(boardsTable.id, boardId));
   if (!board) return false;
-  if (board.teamId === null) return true;
+
+  const allowed = board.allowedUserIds ?? [];
+  if (allowed.length > 0) {
+    return allowed.includes(userId);
+  }
+  if (board.teamId === null) return true; // public board
   const teamIds = await getUserTeamIds(userId);
   return teamIds.includes(board.teamId);
 }
@@ -127,16 +143,14 @@ router.get("/planning/boards", requireAuth, async (req, res): Promise<void> => {
   if (isAdmin) {
     boards = await db.select().from(boardsTable).orderBy(boardsTable.createdAt);
   } else {
+    const allBoards = await db.select().from(boardsTable).orderBy(boardsTable.createdAt);
     const teamIds = await getUserTeamIds(user.id);
-    if (teamIds.length === 0) {
-      boards = await db.select().from(boardsTable)
-        .where(isNull(boardsTable.teamId))
-        .orderBy(boardsTable.createdAt);
-    } else {
-      boards = await db.select().from(boardsTable)
-        .where(or(isNull(boardsTable.teamId), inArray(boardsTable.teamId, teamIds)))
-        .orderBy(boardsTable.createdAt);
-    }
+    boards = allBoards.filter(b => {
+      const allowed = b.allowedUserIds ?? [];
+      if (allowed.length > 0) return allowed.includes(user.id);
+      if (b.teamId === null) return true;
+      return teamIds.includes(b.teamId);
+    });
   }
 
   const teamNameMap = await getTeamNameMap();
@@ -144,8 +158,8 @@ router.get("/planning/boards", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.post("/planning/boards", requireAuth, async (req, res): Promise<void> => {
-  const { name, description, color, teamId } = req.body as {
-    name?: unknown; description?: unknown; color?: unknown; teamId?: unknown;
+  const { name, description, color, teamId, allowedUserIds } = req.body as {
+    name?: unknown; description?: unknown; color?: unknown; teamId?: unknown; allowedUserIds?: unknown;
   };
 
   if (typeof name !== "string" || !name.trim()) {
@@ -154,12 +168,16 @@ router.post("/planning/boards", requireAuth, async (req, res): Promise<void> => 
   }
 
   const parsedTeamId = teamId != null ? parseIntParam(teamId) : null;
+  const parsedAllowedUserIds = Array.isArray(allowedUserIds)
+    ? (allowedUserIds as unknown[]).map(id => parseIntParam(id)).filter((id): id is number => id !== null)
+    : [];
 
   const [board] = await db.insert(boardsTable).values({
     name: name.trim(),
     description: typeof description === "string" ? description.trim() || null : null,
     color: typeof color === "string" ? color.trim() || null : null,
     teamId: parsedTeamId,
+    allowedUserIds: parsedAllowedUserIds,
   }).returning();
 
   await db.insert(boardColumnsTable).values([
@@ -198,7 +216,7 @@ router.get("/planning/boards/:id", requireAuth, async (req, res): Promise<void> 
       .sort((a, b) => a.position - b.position)
       .map((t) => serializeTask(
         t,
-        t.assigneeId ? userMap.get(t.assigneeId) : null,
+        resolveUsers(t.assigneeIds, userMap),
         t.createdById ? userMap.get(t.createdById) : null,
       )),
   }));
@@ -218,10 +236,15 @@ router.patch("/planning/boards/:id", requireAuth, async (req, res): Promise<void
   const parsed = UpdateBoardBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
-  // Allow updating teamId if admin
   const update: Record<string, unknown> = { ...parsed.data };
   if (user.role === "admin" && "teamId" in req.body) {
     update.teamId = req.body.teamId != null ? parseIntParam(req.body.teamId) : null;
+  }
+  if (user.role === "admin" && "allowedUserIds" in req.body) {
+    const raw = req.body.allowedUserIds;
+    update.allowedUserIds = Array.isArray(raw)
+      ? (raw as unknown[]).map(id => parseIntParam(id)).filter((id): id is number => id !== null)
+      : [];
   }
 
   const [board] = await db.update(boardsTable).set(update as any).where(eq(boardsTable.id, params.data.id)).returning();
@@ -300,29 +323,48 @@ router.get("/planning/tasks", requireAuth, async (req, res): Promise<void> => {
   const userMap = await getUserMap();
   res.json(tasks.map((t) => serializeTask(
     t,
-    t.assigneeId ? userMap.get(t.assigneeId) : null,
+    resolveUsers(t.assigneeIds, userMap),
     t.createdById ? userMap.get(t.createdById) : null,
   )));
 });
 
 router.post("/planning/tasks", requireAuth, async (req, res): Promise<void> => {
-  const parsed = CreateTaskBody.safeParse(req.body);
-  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  const body = req.body as {
+    boardId?: unknown; columnId?: unknown; title?: unknown; description?: unknown;
+    assigneeIds?: unknown; priority?: unknown; dueDate?: unknown; tags?: unknown;
+  };
 
-  const { dueDate: rawDueDate, ...taskData } = parsed.data;
+  const boardId = parseIntParam(body.boardId);
+  const columnId = parseIntParam(body.columnId);
+  if (!boardId || !columnId) { res.status(400).json({ error: "boardId and columnId are required" }); return; }
+  if (typeof body.title !== "string" || !body.title.trim()) { res.status(400).json({ error: "title is required" }); return; }
+
+  const assigneeIds = Array.isArray(body.assigneeIds)
+    ? (body.assigneeIds as unknown[]).map(id => parseIntParam(id)).filter((id): id is number => id !== null)
+    : [];
+  const tags = Array.isArray(body.tags) ? (body.tags as unknown[]).filter((t): t is string => typeof t === "string") : [];
+  const priority = ["low", "medium", "high"].includes(body.priority as string) ? body.priority as "low" | "medium" | "high" : null;
+
+  // Compute position
+  const existingTasks = await db.select({ position: tasksTable.position })
+    .from(tasksTable).where(eq(tasksTable.columnId, columnId));
+  const position = existingTasks.length > 0 ? Math.max(...existingTasks.map(t => t.position)) + 1 : 0;
+
   const [task] = await db.insert(tasksTable).values({
-    ...taskData,
-    dueDate: rawDueDate != null ? String(rawDueDate) : null,
-    tags: taskData.tags ?? [],
+    boardId,
+    columnId,
+    title: body.title.trim(),
+    description: typeof body.description === "string" ? body.description.trim() || null : null,
+    assigneeIds,
+    priority,
+    dueDate: typeof body.dueDate === "string" ? body.dueDate || null : null,
+    tags,
+    position,
     createdById: req.user!.id,
   }).returning();
 
   const userMap = await getUserMap();
-  res.status(201).json(serializeTask(
-    task,
-    task.assigneeId ? userMap.get(task.assigneeId) : null,
-    userMap.get(req.user!.id),
-  ));
+  res.status(201).json(serializeTask(task, resolveUsers(task.assigneeIds, userMap), userMap.get(req.user!.id)));
 });
 
 router.get("/planning/tasks/:id", requireAuth, async (req, res): Promise<void> => {
@@ -333,32 +375,46 @@ router.get("/planning/tasks/:id", requireAuth, async (req, res): Promise<void> =
   if (!task) { res.status(404).json({ error: "Task not found" }); return; }
 
   const userMap = await getUserMap();
-  res.json(serializeTask(
-    task,
-    task.assigneeId ? userMap.get(task.assigneeId) : null,
-    task.createdById ? userMap.get(task.createdById) : null,
-  ));
+  res.json(serializeTask(task, resolveUsers(task.assigneeIds, userMap), task.createdById ? userMap.get(task.createdById) : null));
 });
 
 router.patch("/planning/tasks/:id", requireAuth, async (req, res): Promise<void> => {
   const params = UpdateTaskParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
-  const parsed = UpdateTaskBody.safeParse(req.body);
-  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
-  const { dueDate: rawDueDate2, ...updateFields } = parsed.data;
-  const [task] = await db.update(tasksTable).set({
-    ...updateFields,
-    ...(rawDueDate2 !== undefined ? { dueDate: rawDueDate2 != null ? String(rawDueDate2) : null } : {}),
-  }).where(eq(tasksTable.id, params.data.id)).returning();
+  const body = req.body as {
+    columnId?: unknown; title?: unknown; description?: unknown;
+    assigneeIds?: unknown; priority?: unknown; dueDate?: unknown;
+    position?: unknown; tags?: unknown;
+  };
+
+  const update: Record<string, unknown> = {};
+  if (body.columnId != null) { const v = parseIntParam(body.columnId); if (v) update["columnId"] = v; }
+  if (typeof body.title === "string" && body.title.trim()) update["title"] = body.title.trim();
+  if ("description" in body) update["description"] = typeof body.description === "string" ? body.description.trim() || null : null;
+  if ("assigneeIds" in body) {
+    update["assigneeIds"] = Array.isArray(body.assigneeIds)
+      ? (body.assigneeIds as unknown[]).map(id => parseIntParam(id)).filter((id): id is number => id !== null)
+      : [];
+  }
+  if ("priority" in body) {
+    update["priority"] = ["low", "medium", "high"].includes(body.priority as string) ? body.priority : null;
+  }
+  if ("dueDate" in body) {
+    update["dueDate"] = typeof body.dueDate === "string" ? body.dueDate || null : null;
+  }
+  if (typeof body.position === "number") update["position"] = Math.floor(body.position);
+  if (Array.isArray(body.tags)) {
+    update["tags"] = (body.tags as unknown[]).filter((t): t is string => typeof t === "string");
+  }
+
+  if (Object.keys(update).length === 0) { res.status(400).json({ error: "Nothing to update" }); return; }
+
+  const [task] = await db.update(tasksTable).set(update as any).where(eq(tasksTable.id, params.data.id)).returning();
   if (!task) { res.status(404).json({ error: "Task not found" }); return; }
 
   const userMap = await getUserMap();
-  res.json(serializeTask(
-    task,
-    task.assigneeId ? userMap.get(task.assigneeId) : null,
-    task.createdById ? userMap.get(task.createdById) : null,
-  ));
+  res.json(serializeTask(task, resolveUsers(task.assigneeIds, userMap), task.createdById ? userMap.get(task.createdById) : null));
 });
 
 router.delete("/planning/tasks/:id", requireAuth, async (req, res): Promise<void> => {
@@ -461,54 +517,74 @@ router.get("/planning/events", requireAuth, async (req, res): Promise<void> => {
   const userMap = await getUserMap();
   res.json(events.map((e) => serializeEvent(
     e,
-    e.assigneeId ? userMap.get(e.assigneeId) : null,
+    resolveUsers(e.attendeeIds, userMap),
     e.createdById ? userMap.get(e.createdById) : null,
   )));
 });
 
 router.post("/planning/events", requireAuth, async (req, res): Promise<void> => {
-  const parsed = CreateEventBody.safeParse(req.body);
-  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  const body = req.body as {
+    title?: unknown; description?: unknown; startDate?: unknown; endDate?: unknown;
+    color?: unknown; attendeeIds?: unknown; allDay?: unknown; teamId?: unknown;
+  };
 
-  const teamId = req.body.teamId != null ? parseIntParam(req.body.teamId) : null;
+  if (typeof body.title !== "string" || !body.title.trim()) {
+    res.status(400).json({ error: "title is required" });
+    return;
+  }
+  if (typeof body.startDate !== "string" || !body.startDate) {
+    res.status(400).json({ error: "startDate is required" });
+    return;
+  }
+
+  const attendeeIds = Array.isArray(body.attendeeIds)
+    ? (body.attendeeIds as unknown[]).map(id => parseIntParam(id)).filter((id): id is number => id !== null)
+    : [];
+  const teamId = body.teamId != null ? parseIntParam(body.teamId) : null;
 
   const [event] = await db.insert(calendarEventsTable).values({
-    ...parsed.data,
-    createdById: req.user!.id,
-    startDate: new Date(parsed.data.startDate),
-    endDate: parsed.data.endDate ? new Date(parsed.data.endDate) : null,
-    allDay: parsed.data.allDay ?? false,
+    title: body.title.trim(),
+    description: typeof body.description === "string" ? body.description.trim() || null : null,
+    startDate: new Date(body.startDate),
+    endDate: typeof body.endDate === "string" && body.endDate ? new Date(body.endDate) : null,
+    color: typeof body.color === "string" ? body.color || null : null,
+    attendeeIds,
+    allDay: body.allDay === true,
     teamId,
+    createdById: req.user!.id,
   }).returning();
 
   const userMap = await getUserMap();
-  res.status(201).json(serializeEvent(
-    event,
-    event.assigneeId ? userMap.get(event.assigneeId) : null,
-    userMap.get(req.user!.id),
-  ));
+  res.status(201).json(serializeEvent(event, resolveUsers(event.attendeeIds, userMap), userMap.get(req.user!.id)));
 });
 
 router.patch("/planning/events/:id", requireAuth, async (req, res): Promise<void> => {
   const params = UpdateEventParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
-  const parsed = UpdateEventBody.safeParse(req.body);
-  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
-  const updateData: Record<string, unknown> = { ...parsed.data };
-  if (parsed.data.startDate) updateData.startDate = new Date(parsed.data.startDate);
-  if (parsed.data.endDate) updateData.endDate = new Date(parsed.data.endDate);
-  if (parsed.data.endDate === null) updateData.endDate = null;
+  const body = req.body as {
+    title?: unknown; description?: unknown; startDate?: unknown; endDate?: unknown;
+    color?: unknown; attendeeIds?: unknown; allDay?: unknown;
+  };
 
-  const [event] = await db.update(calendarEventsTable).set(updateData as any).where(eq(calendarEventsTable.id, params.data.id)).returning();
+  const update: Record<string, unknown> = {};
+  if (typeof body.title === "string" && body.title.trim()) update["title"] = body.title.trim();
+  if ("description" in body) update["description"] = typeof body.description === "string" ? body.description.trim() || null : null;
+  if (typeof body.startDate === "string" && body.startDate) update["startDate"] = new Date(body.startDate);
+  if ("endDate" in body) update["endDate"] = typeof body.endDate === "string" && body.endDate ? new Date(body.endDate) : null;
+  if ("color" in body) update["color"] = typeof body.color === "string" ? body.color || null : null;
+  if ("attendeeIds" in body) {
+    update["attendeeIds"] = Array.isArray(body.attendeeIds)
+      ? (body.attendeeIds as unknown[]).map(id => parseIntParam(id)).filter((id): id is number => id !== null)
+      : [];
+  }
+  if ("allDay" in body) update["allDay"] = body.allDay === true;
+
+  const [event] = await db.update(calendarEventsTable).set(update as any).where(eq(calendarEventsTable.id, params.data.id)).returning();
   if (!event) { res.status(404).json({ error: "Event not found" }); return; }
 
   const userMap = await getUserMap();
-  res.json(serializeEvent(
-    event,
-    event.assigneeId ? userMap.get(event.assigneeId) : null,
-    event.createdById ? userMap.get(event.createdById) : null,
-  ));
+  res.json(serializeEvent(event, resolveUsers(event.attendeeIds, userMap), event.createdById ? userMap.get(event.createdById) : null));
 });
 
 router.delete("/planning/events/:id", requireAuth, async (req, res): Promise<void> => {

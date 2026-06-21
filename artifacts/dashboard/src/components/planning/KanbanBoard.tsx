@@ -15,10 +15,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Trash2, GripVertical, X, Pencil, Check, User, UserCog } from 'lucide-react';
+import { Plus, Trash2, GripVertical, X, Pencil, Check, UserCog, Calendar } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { getAvatarClasses, getSubroleClasses } from '@/lib/role-colors';
 import { motion, AnimatePresence } from 'framer-motion';
+import { format } from 'date-fns';
 
 interface KanbanBoardProps {
   boardId: number;
@@ -39,8 +40,7 @@ type UserInfo = {
   subroles: string[];
 } | null;
 
-function UserAvatar({ user, size = 'sm' }: { user: UserInfo; size?: 'sm' | 'md' }) {
-  if (!user) return null;
+function UserAvatar({ user, size = 'sm' }: { user: NonNullable<UserInfo>; size?: 'sm' | 'md' }) {
   const sz = size === 'sm' ? 'w-5 h-5 text-[9px]' : 'w-7 h-7 text-xs';
   const classes = getAvatarClasses(user.role, user.subroles);
   if (user.avatarUrl) {
@@ -63,6 +63,26 @@ function UserAvatar({ user, size = 'sm' }: { user: UserInfo; size?: 'sm' | 'md' 
   );
 }
 
+function AssigneeStack({ assignees }: { assignees: NonNullable<UserInfo>[] }) {
+  if (assignees.length === 0) return null;
+  const shown = assignees.slice(0, 3);
+  const extra = assignees.length - shown.length;
+  return (
+    <div className="flex -space-x-1.5">
+      {shown.map(a => (
+        <div key={a.id} className="ring-1 ring-background rounded-full">
+          <UserAvatar user={a} size="sm" />
+        </div>
+      ))}
+      {extra > 0 && (
+        <div className="w-5 h-5 rounded-full bg-muted/70 border border-border text-[8px] font-bold flex items-center justify-center flex-shrink-0 ring-1 ring-background">
+          +{extra}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function KanbanBoard({ boardId }: KanbanBoardProps) {
   const { data: board, isLoading: boardLoading } = useGetBoard(boardId, {
     query: { queryKey: getGetBoardQueryKey(boardId) }
@@ -77,14 +97,19 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
   const deleteCol = useDeleteBoardColumn();
   const queryClient = useQueryClient();
 
+  // Task dialog state
   const [taskDialog, setTaskDialog] = useState<{ open: boolean; columnId: number | null }>({ open: false, columnId: null });
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDesc, setTaskDesc] = useState('');
   const [taskPriority, setTaskPriority] = useState<'low' | 'medium' | 'high' | ''>('');
   const [taskTags, setTaskTags] = useState('');
-  const [taskAssigneeId, setTaskAssigneeId] = useState<string>('none');
+  const [taskAssigneeIds, setTaskAssigneeIds] = useState<number[]>([]);
+  const [taskDueDate, setTaskDueDate] = useState('');
+
+  // Inline assignee popover
   const [assigneePopoverTaskId, setAssigneePopoverTaskId] = useState<number | null>(null);
 
+  // Column edit state
   const [addingCol, setAddingCol] = useState(false);
   const [newColName, setNewColName] = useState('');
   const [editingColId, setEditingColId] = useState<number | null>(null);
@@ -112,7 +137,8 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
 
   const openTaskDialog = (columnId: number) => {
     setTaskDialog({ open: true, columnId });
-    setTaskTitle(''); setTaskDesc(''); setTaskPriority(''); setTaskTags(''); setTaskAssigneeId('none');
+    setTaskTitle(''); setTaskDesc(''); setTaskPriority('');
+    setTaskTags(''); setTaskAssigneeIds([]); setTaskDueDate('');
   };
 
   const handleCreateTask = async () => {
@@ -126,8 +152,9 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
         description: taskDesc || undefined,
         priority: taskPriority || undefined,
         tags,
-        assigneeId: taskAssigneeId && taskAssigneeId !== 'none' ? parseInt(taskAssigneeId, 10) : undefined,
-      }
+        assigneeIds: taskAssigneeIds,
+        dueDate: taskDueDate || undefined,
+      } as any
     });
     invalidateBoard();
     setTaskDialog({ open: false, columnId: null });
@@ -138,8 +165,16 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
     invalidateBoard();
   };
 
-  const handleChangeAssignee = async (taskId: number, userId: number | null) => {
-    await updateTask.mutateAsync({ id: taskId, data: { assigneeId: userId ?? undefined } });
+  const handleToggleAssignee = async (taskId: number, userId: number, currentIds: number[]) => {
+    const newIds = currentIds.includes(userId)
+      ? currentIds.filter(id => id !== userId)
+      : [...currentIds, userId];
+    await updateTask.mutateAsync({ id: taskId, data: { assigneeIds: newIds } as any });
+    invalidateBoard();
+  };
+
+  const handleClearAssignees = async (taskId: number) => {
+    await updateTask.mutateAsync({ id: taskId, data: { assigneeIds: [] } as any });
     invalidateBoard();
     setAssigneePopoverTaskId(null);
   };
@@ -252,8 +287,25 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
                             className={`p-2 flex-1 space-y-2 min-h-[80px] transition-colors ${snapshot.isDraggingOver ? 'bg-primary/5' : ''}`}
                           >
                             {[...column.tasks].sort((a, b) => a.position - b.position).map((task, index) => {
-                              const assignee = (task as any).assignee as UserInfo;
+                              const assignees = ((task as any).assignees ?? []) as NonNullable<UserInfo>[];
+                              const assigneeIds = ((task as any).assigneeIds ?? []) as number[];
                               const createdBy = (task as any).createdBy as UserInfo;
+
+                              // Due date display
+                              let dueDateEl: React.ReactNode = null;
+                              if (task.dueDate) {
+                                const due = new Date(task.dueDate + 'T00:00:00');
+                                const today = new Date(); today.setHours(0, 0, 0, 0);
+                                const isPast = due < today;
+                                const isTodayDate = due.getTime() === today.getTime();
+                                dueDateEl = (
+                                  <span className={`text-[9px] flex items-center gap-0.5 ${isPast ? 'text-red-400' : isTodayDate ? 'text-amber-400' : 'text-muted-foreground'}`}>
+                                    <Calendar className="w-2.5 h-2.5" />
+                                    {format(due, 'MMM d')}
+                                  </span>
+                                );
+                              }
+
                               return (
                                 <Draggable key={task.id} draggableId={task.id.toString()} index={index}>
                                   {(provided, snapshot) => (
@@ -279,18 +331,19 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
                                           )}
                                           {task.tags && task.tags.length > 0 && (
                                             <div className="flex gap-1 flex-wrap mb-2">
-                                              {task.tags.map(tag => (
+                                              {(task.tags as string[]).map((tag: string) => (
                                                 <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-border/50">{tag}</Badge>
                                               ))}
                                             </div>
                                           )}
-                                          <div className="flex justify-between items-center mt-1">
-                                            <div className="flex items-center gap-1.5">
+                                          <div className="flex justify-between items-center mt-1 gap-1">
+                                            <div className="flex items-center gap-1.5 flex-wrap">
                                               {task.priority && (
-                                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium uppercase ${PRIORITY_COLORS[task.priority]}`}>
+                                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium uppercase ${PRIORITY_COLORS[task.priority as keyof typeof PRIORITY_COLORS]}`}>
                                                   {task.priority}
                                                 </span>
                                               )}
+                                              {dueDateEl}
                                             </div>
                                             <div className="flex items-center gap-1.5">
                                               {/* Creator avatar */}
@@ -299,7 +352,7 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
                                                   <UserAvatar user={createdBy} size="sm" />
                                                 </div>
                                               )}
-                                              {/* Assignee chip — clickable popover */}
+                                              {/* Assignees — clickable popover */}
                                               <Popover
                                                 open={assigneePopoverTaskId === task.id}
                                                 onOpenChange={(open) => setAssigneePopoverTaskId(open ? task.id : null)}
@@ -308,15 +361,10 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
                                                   <button
                                                     onClick={(e) => e.stopPropagation()}
                                                     className="flex items-center gap-1 focus:outline-none"
-                                                    title="Change assignee"
+                                                    title="Manage assignees"
                                                   >
-                                                    {assignee ? (
-                                                      <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium cursor-pointer hover:ring-2 hover:ring-primary/40 transition-all ${getAvatarClasses(assignee.role, assignee.subroles)}`}>
-                                                        {assignee.avatarUrl && (
-                                                          <img src={assignee.avatarUrl} alt="" className="w-3.5 h-3.5 rounded-full" />
-                                                        )}
-                                                        <span>{assignee.displayName || assignee.username}</span>
-                                                      </span>
+                                                    {assignees.length > 0 ? (
+                                                      <AssigneeStack assignees={assignees} />
                                                     ) : (
                                                       <span className="opacity-0 group-hover:opacity-60 flex items-center gap-0.5 text-[10px] text-muted-foreground border border-dashed border-border/60 px-1.5 py-0.5 rounded-full transition-opacity cursor-pointer hover:border-primary/40 hover:opacity-100">
                                                         <UserCog className="w-3 h-3" />
@@ -326,48 +374,53 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
                                                   </button>
                                                 </PopoverTrigger>
                                                 <PopoverContent
-                                                  className="w-52 p-1.5"
+                                                  className="w-56 p-1.5"
                                                   side="top"
                                                   align="end"
                                                   onClick={(e) => e.stopPropagation()}
                                                 >
-                                                  <p className="text-[10px] text-muted-foreground px-2 py-1 uppercase tracking-wider font-semibold">Assign to</p>
-                                                  <button
-                                                    onClick={() => handleChangeAssignee(task.id, null)}
-                                                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm hover:bg-muted/60 transition-colors text-left ${!assignee ? 'bg-muted/40' : ''}`}
-                                                  >
-                                                    <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                                                      <User className="w-3 h-3 text-muted-foreground" />
-                                                    </div>
-                                                    <span className="text-muted-foreground text-xs">Unassigned</span>
-                                                    {!assignee && <Check className="w-3 h-3 ml-auto text-primary" />}
-                                                  </button>
-                                                  <div className="my-1 border-t border-border/40" />
-                                                  {users?.map(u => {
-                                                    const isSelected = assignee?.id === u.id;
-                                                    return (
+                                                  <p className="text-[10px] text-muted-foreground px-2 py-1 uppercase tracking-wider font-semibold">Assign members</p>
+                                                  {assignees.length > 0 && (
+                                                    <>
                                                       <button
-                                                        key={u.id}
-                                                        onClick={() => handleChangeAssignee(task.id, u.id)}
-                                                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm hover:bg-muted/60 transition-colors text-left ${isSelected ? 'bg-muted/40' : ''}`}
+                                                        onClick={() => handleClearAssignees(task.id)}
+                                                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm hover:bg-muted/60 transition-colors text-left text-muted-foreground"
                                                       >
-                                                        {u.robloxAvatarUrl ? (
-                                                          <img src={u.robloxAvatarUrl} alt="" className="w-6 h-6 rounded-full flex-shrink-0" />
-                                                        ) : (
-                                                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0 ${getAvatarClasses(u.role, u.subroles ?? [])}`}>
-                                                            {u.robloxUsername.charAt(0)}
-                                                          </div>
-                                                        )}
-                                                        <div className="flex-1 min-w-0">
-                                                          <div className="text-xs font-medium truncate">{u.robloxDisplayName || u.robloxUsername}</div>
-                                                          {u.subroles?.[0] && (
-                                                            <div className={`text-[9px] px-1 rounded-sm inline-block ${getSubroleClasses(u.subroles[0])}`}>{u.subroles[0]}</div>
-                                                          )}
-                                                        </div>
-                                                        {isSelected && <Check className="w-3 h-3 flex-shrink-0 text-primary" />}
+                                                        <X className="w-3.5 h-3.5" />
+                                                        <span className="text-xs">Clear all</span>
                                                       </button>
-                                                    );
-                                                  })}
+                                                      <div className="my-1 border-t border-border/40" />
+                                                    </>
+                                                  )}
+                                                  <div className="max-h-48 overflow-y-auto">
+                                                    {users?.map(u => {
+                                                      const isSelected = assigneeIds.includes(u.id);
+                                                      return (
+                                                        <button
+                                                          key={u.id}
+                                                          onClick={() => handleToggleAssignee(task.id, u.id, assigneeIds)}
+                                                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm hover:bg-muted/60 transition-colors text-left ${isSelected ? 'bg-muted/40' : ''}`}
+                                                        >
+                                                          {u.robloxAvatarUrl ? (
+                                                            <img src={u.robloxAvatarUrl} alt="" className="w-6 h-6 rounded-full flex-shrink-0" />
+                                                          ) : (
+                                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0 ${getAvatarClasses(u.role, u.subroles ?? [])}`}>
+                                                              {u.robloxUsername.charAt(0)}
+                                                            </div>
+                                                          )}
+                                                          <div className="flex-1 min-w-0">
+                                                            <div className="text-xs font-medium truncate">{u.robloxDisplayName || u.robloxUsername}</div>
+                                                            {u.subroles?.[0] && (
+                                                              <div className={`text-[9px] px-1 rounded-sm inline-block ${getSubroleClasses(u.subroles[0])}`}>{u.subroles[0]}</div>
+                                                            )}
+                                                          </div>
+                                                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-border/60'}`}>
+                                                            {isSelected && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                                                          </div>
+                                                        </button>
+                                                      );
+                                                    })}
+                                                  </div>
                                                 </PopoverContent>
                                               </Popover>
                                             </div>
@@ -461,35 +514,60 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
               <label className="text-sm font-medium mb-1.5 block">Description</label>
               <Textarea placeholder="Optional description..." value={taskDesc} onChange={e => setTaskDesc(e.target.value)} className="resize-none h-20 text-sm" />
             </div>
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">Assigned to</label>
-              <Select value={taskAssigneeId} onValueChange={setTaskAssigneeId}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Unassigned" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <User className="w-3.5 h-3.5" /> Unassigned
-                    </div>
-                  </SelectItem>
-                  {users?.map(u => (
-                    <SelectItem key={u.id} value={u.id.toString()}>
-                      <div className="flex items-center gap-2">
-                        {u.robloxAvatarUrl
-                          ? <img src={u.robloxAvatarUrl} alt="" className="w-4 h-4 rounded-full" />
-                          : <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold ${getAvatarClasses(u.role, u.subroles ?? [])}`}>{u.robloxUsername.charAt(0)}</div>
-                        }
-                        <span>{u.robloxDisplayName || u.robloxUsername}</span>
-                        {u.subroles?.[0] && (
-                          <span className={`text-[10px] px-1.5 py-0 rounded-full ${getSubroleClasses(u.subroles[0])}`}>{u.subroles[0]}</span>
+
+            {/* Multi-assignee */}
+            {users && users.length > 0 && (
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">
+                  Assign to
+                  {taskAssigneeIds.length > 0 && (
+                    <span className="ml-2 text-xs text-primary font-normal">{taskAssigneeIds.length} selected</span>
+                  )}
+                </label>
+                <div className="border border-border/60 rounded-lg max-h-36 overflow-y-auto divide-y divide-border/30">
+                  {users.map(u => {
+                    const selected = taskAssigneeIds.includes(u.id);
+                    return (
+                      <button
+                        key={u.id}
+                        type="button"
+                        onClick={() => setTaskAssigneeIds(prev => selected ? prev.filter(id => id !== u.id) : [...prev, u.id])}
+                        className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 text-left transition-colors hover:bg-muted/40 ${selected ? 'bg-muted/30' : ''}`}
+                      >
+                        {u.robloxAvatarUrl ? (
+                          <img src={u.robloxAvatarUrl} alt="" className="w-6 h-6 rounded-full flex-shrink-0" />
+                        ) : (
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0 ${getAvatarClasses(u.role, u.subroles ?? [])}`}>
+                            {u.robloxUsername.charAt(0)}
+                          </div>
                         )}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium truncate">{u.robloxDisplayName || u.robloxUsername}</div>
+                          {u.subroles?.[0] && (
+                            <span className={`text-[9px] px-1 py-0 rounded-sm inline-block ${getSubroleClasses(u.subroles[0])}`}>{u.subroles[0]}</span>
+                          )}
+                        </div>
+                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${selected ? 'bg-primary border-primary' : 'border-border/60'}`}>
+                          {selected && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Due date */}
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Due date</label>
+              <Input
+                type="date"
+                value={taskDueDate}
+                onChange={e => setTaskDueDate(e.target.value)}
+                className="h-9 [color-scheme:dark]"
+              />
             </div>
+
             <div>
               <label className="text-sm font-medium mb-1.5 block">Priority</label>
               <Select value={taskPriority} onValueChange={(v: any) => setTaskPriority(v)}>

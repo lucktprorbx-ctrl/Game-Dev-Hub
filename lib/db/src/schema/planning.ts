@@ -12,6 +12,7 @@ export const boardsTable = pgTable("boards", {
   description: text("description"),
   color: text("color"),
   teamId: integer("team_id").references(() => teamsTable.id, { onDelete: "set null" }),
+  allowedUserIds: integer("allowed_user_ids").array().default([]),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -36,7 +37,7 @@ export const tasksTable = pgTable("tasks", {
   columnId: integer("column_id").notNull().references(() => boardColumnsTable.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description"),
-  assigneeId: integer("assignee_id").references(() => usersTable.id, { onDelete: "set null" }),
+  assigneeIds: integer("assignee_ids").array().notNull().default([]),
   createdById: integer("created_by_id").references(() => usersTable.id, { onDelete: "set null" }),
   priority: priorityEnum("priority"),
   dueDate: text("due_date"),
@@ -56,7 +57,7 @@ export const calendarEventsTable = pgTable("calendar_events", {
   startDate: timestamp("start_date").notNull(),
   endDate: timestamp("end_date"),
   color: text("color"),
-  assigneeId: integer("assignee_id").references(() => usersTable.id, { onDelete: "set null" }),
+  attendeeIds: integer("attendee_ids").array().notNull().default([]),
   createdById: integer("created_by_id").references(() => usersTable.id, { onDelete: "set null" }),
   allDay: boolean("all_day").notNull().default(false),
   teamId: integer("team_id").references(() => teamsTable.id, { onDelete: "set null" }),

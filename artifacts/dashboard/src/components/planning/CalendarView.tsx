@@ -4,13 +4,38 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronLeft, ChevronRight, Plus, Trash2, CalendarPlus, User } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Plus, Trash2, CalendarPlus } from 'lucide-react';
 import { startOfMonth, endOfMonth, eachDayOfInterval, format, isSameMonth, isToday, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
 import { getAvatarClasses } from '@/lib/role-colors';
 
 const EVENT_COLORS = ['#f59e0b', '#6366f1', '#10b981', '#ef4444', '#8b5cf6', '#06b6d4'];
+
+type UserInfo = { id: number; username: string; displayName: string | null; avatarUrl: string | null; role: string; subroles: string[] };
+
+function AttendeeAvatars({ attendees }: { attendees: UserInfo[] }) {
+  if (attendees.length === 0) return null;
+  const shown = attendees.slice(0, 2);
+  const extra = attendees.length - shown.length;
+  return (
+    <div className="flex -space-x-1">
+      {shown.map(a => a.avatarUrl ? (
+        <img key={a.id} src={a.avatarUrl} alt="" title={`@${a.username}`} className="w-3 h-3 rounded-full ring-1 ring-background" />
+      ) : (
+        <div
+          key={a.id}
+          title={`@${a.username}`}
+          className={`w-3 h-3 rounded-full flex items-center justify-center text-[6px] font-bold ring-1 ring-background ${getAvatarClasses(a.role, a.subroles)}`}
+        >
+          {a.username.charAt(0).toUpperCase()}
+        </div>
+      ))}
+      {extra > 0 && (
+        <div className="w-3 h-3 rounded-full bg-muted text-[6px] font-bold flex items-center justify-center ring-1 ring-background">+{extra}</div>
+      )}
+    </div>
+  );
+}
 
 export function CalendarView() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -21,7 +46,7 @@ export function CalendarView() {
   const [endTime, setEndTime] = useState('10:00');
   const [allDay, setAllDay] = useState(false);
   const [color, setColor] = useState(EVENT_COLORS[0]);
-  const [assigneeId, setAssigneeId] = useState('');
+  const [attendeeIds, setAttendeeIds] = useState<number[]>([]);
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(monthStart);
@@ -41,7 +66,7 @@ export function CalendarView() {
   const openDialog = (day: Date) => {
     setSelectedDay(day);
     setTitle(''); setStartTime('09:00'); setEndTime('10:00');
-    setAllDay(false); setColor(EVENT_COLORS[0]); setAssigneeId('');
+    setAllDay(false); setColor(EVENT_COLORS[0]); setAttendeeIds([]);
     setEventDialog(true);
   };
 
@@ -58,8 +83,8 @@ export function CalendarView() {
         endDate: end.toISOString(),
         allDay,
         color,
-        assigneeId: assigneeId ? parseInt(assigneeId, 10) : undefined,
-      }
+        attendeeIds,
+      } as any
     });
     invalidate();
     setEventDialog(false);
@@ -115,8 +140,9 @@ export function CalendarView() {
                 </div>
                 <div className="space-y-0.5">
                   {dayEvents.slice(0, 3).map(event => {
-                    const eventAssignee = (event as any).assignee;
-                    const eventCreatedBy = (event as any).createdBy;
+                    const attendees = ((event as any).attendees ?? []) as UserInfo[];
+                    const createdBy = (event as any).createdBy as UserInfo | null;
+                    const displayAvatars = attendees.length > 0 ? attendees : createdBy ? [createdBy] : [];
                     return (
                       <div
                         key={event.id}
@@ -126,18 +152,7 @@ export function CalendarView() {
                       >
                         <span className="truncate flex-1">{event.title}</span>
                         <div className="flex items-center gap-0.5 ml-1 flex-shrink-0">
-                          {eventAssignee?.avatarUrl ? (
-                            <img src={eventAssignee.avatarUrl} alt="" title={`@${eventAssignee.username}`} className="w-3 h-3 rounded-full" />
-                          ) : eventAssignee ? (
-                            <div
-                              title={`@${eventAssignee.username}`}
-                              className={`w-3 h-3 rounded-full flex items-center justify-center text-[7px] font-bold ${getAvatarClasses(eventAssignee.role, eventAssignee.subroles)}`}
-                            >
-                              {eventAssignee.username.charAt(0).toUpperCase()}
-                            </div>
-                          ) : eventCreatedBy?.avatarUrl ? (
-                            <img src={eventCreatedBy.avatarUrl} alt="" title={`@${eventCreatedBy.username}`} className="w-3 h-3 rounded-full opacity-60" />
-                          ) : null}
+                          <AttendeeAvatars attendees={displayAvatars} />
                           <Trash2
                             className="w-2.5 h-2.5 opacity-0 group-hover/event:opacity-100 cursor-pointer"
                             onClick={e => handleDelete(event.id, e)}
@@ -172,7 +187,7 @@ export function CalendarView() {
             </div>
 
             <div className="flex items-center gap-3">
-              <label className="flex items-center gap-2 cursor-pointer text-sm">
+              <label className="flex items-center gap-2 cursor-pointer text-sm select-none">
                 <input type="checkbox" checked={allDay} onChange={e => setAllDay(e.target.checked)} className="rounded" />
                 All day
               </label>
@@ -191,32 +206,42 @@ export function CalendarView() {
               </div>
             )}
 
-            <div>
-              <label className="text-sm font-medium mb-1.5 block">Assign to</label>
-              <Select value={assigneeId} onValueChange={setAssigneeId}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Unassigned" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <User className="w-3.5 h-3.5" /> Unassigned
-                    </div>
-                  </SelectItem>
-                  {users?.map(u => (
-                    <SelectItem key={u.id} value={u.id.toString()}>
-                      <div className="flex items-center gap-2">
-                        {u.robloxAvatarUrl
-                          ? <img src={u.robloxAvatarUrl} alt="" className="w-4 h-4 rounded-full" />
-                          : <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold ${getAvatarClasses(u.role, u.subroles ?? [])}`}>{u.robloxUsername.charAt(0)}</div>
-                        }
-                        <span>{u.robloxDisplayName || u.robloxUsername}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Multi-attendee */}
+            {users && users.length > 0 && (
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">
+                  Attendees
+                  {attendeeIds.length > 0 && (
+                    <span className="ml-2 text-xs text-primary font-normal">{attendeeIds.length} selected</span>
+                  )}
+                </label>
+                <div className="border border-border/60 rounded-lg max-h-32 overflow-y-auto divide-y divide-border/30">
+                  {users.map(u => {
+                    const selected = attendeeIds.includes(u.id);
+                    return (
+                      <button
+                        key={u.id}
+                        type="button"
+                        onClick={() => setAttendeeIds(prev => selected ? prev.filter(id => id !== u.id) : [...prev, u.id])}
+                        className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 text-left transition-colors hover:bg-muted/40 ${selected ? 'bg-muted/30' : ''}`}
+                      >
+                        {u.robloxAvatarUrl ? (
+                          <img src={u.robloxAvatarUrl} alt="" className="w-5 h-5 rounded-full flex-shrink-0" />
+                        ) : (
+                          <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold flex-shrink-0 ${getAvatarClasses(u.role, u.subroles ?? [])}`}>
+                            {u.robloxUsername.charAt(0)}
+                          </div>
+                        )}
+                        <span className="text-xs flex-1 truncate">{u.robloxDisplayName || u.robloxUsername}</span>
+                        <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors ${selected ? 'bg-primary border-primary' : 'border-border/60'}`}>
+                          {selected && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="text-sm font-medium mb-1.5 block">Color</label>
