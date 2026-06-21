@@ -82,7 +82,7 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
   const [taskDesc, setTaskDesc] = useState('');
   const [taskPriority, setTaskPriority] = useState<'low' | 'medium' | 'high' | ''>('');
   const [taskTags, setTaskTags] = useState('');
-  const [taskAssigneeId, setTaskAssigneeId] = useState<string>('');
+  const [taskAssigneeId, setTaskAssigneeId] = useState<string>('none');
   const [assigneePopoverTaskId, setAssigneePopoverTaskId] = useState<number | null>(null);
 
   const [addingCol, setAddingCol] = useState(false);
@@ -112,7 +112,7 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
 
   const openTaskDialog = (columnId: number) => {
     setTaskDialog({ open: true, columnId });
-    setTaskTitle(''); setTaskDesc(''); setTaskPriority(''); setTaskTags(''); setTaskAssigneeId('');
+    setTaskTitle(''); setTaskDesc(''); setTaskPriority(''); setTaskTags(''); setTaskAssigneeId('none');
   };
 
   const handleCreateTask = async () => {
@@ -126,7 +126,7 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
         description: taskDesc || undefined,
         priority: taskPriority || undefined,
         tags,
-        assigneeId: taskAssigneeId ? parseInt(taskAssigneeId, 10) : undefined,
+        assigneeId: taskAssigneeId && taskAssigneeId !== 'none' ? parseInt(taskAssigneeId, 10) : undefined,
       }
     });
     invalidateBoard();
@@ -465,24 +465,10 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
               <label className="text-sm font-medium mb-1.5 block">Assigned to</label>
               <Select value={taskAssigneeId} onValueChange={setTaskAssigneeId}>
                 <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Unassigned">
-                    {taskAssigneeId ? (() => {
-                      const u = users?.find(u => u.id === parseInt(taskAssigneeId, 10));
-                      if (!u) return 'Unassigned';
-                      return (
-                        <div className="flex items-center gap-2">
-                          {u.robloxAvatarUrl
-                            ? <img src={u.robloxAvatarUrl} alt="" className="w-4 h-4 rounded-full" />
-                            : <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold ${getAvatarClasses(u.role, u.subroles ?? [])}`}>{u.robloxUsername.charAt(0)}</div>
-                          }
-                          <span>{u.robloxDisplayName || u.robloxUsername}</span>
-                        </div>
-                      );
-                    })() : null}
-                  </SelectValue>
+                  <SelectValue placeholder="Unassigned" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">
+                  <SelectItem value="none">
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <User className="w-3.5 h-3.5" /> Unassigned
                     </div>
