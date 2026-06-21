@@ -62,4 +62,4 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.production]
-ROBLOX_REDIRECT_URI = "https://game-dev-hub--itsluckt.replit.app/api/auth/roblox/callback"
+ROBLOX_REDIRECT_URI = "https://game-dev-hub--frenchmapper1.replit.app/api/auth/roblox/callback"
