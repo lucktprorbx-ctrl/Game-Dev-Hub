@@ -2,6 +2,7 @@ import { pgTable, text, serial, timestamp, integer, boolean, pgEnum } from "driz
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { usersTable } from "./users";
+import { teamsTable } from "./teams";
 
 export const priorityEnum = pgEnum("priority", ["low", "medium", "high"]);
 
@@ -10,6 +11,7 @@ export const boardsTable = pgTable("boards", {
   name: text("name").notNull(),
   description: text("description"),
   color: text("color"),
+  teamId: integer("team_id").references(() => teamsTable.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -57,6 +59,7 @@ export const calendarEventsTable = pgTable("calendar_events", {
   assigneeId: integer("assignee_id").references(() => usersTable.id, { onDelete: "set null" }),
   createdById: integer("created_by_id").references(() => usersTable.id, { onDelete: "set null" }),
   allDay: boolean("all_day").notNull().default(false),
+  teamId: integer("team_id").references(() => teamsTable.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

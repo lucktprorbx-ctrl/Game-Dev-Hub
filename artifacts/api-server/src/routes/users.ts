@@ -52,7 +52,7 @@ async function fetchRobloxProfile(robloxId: string): Promise<{
 }
 
 router.get("/users/preview/:robloxId", requireAuth, requireAdmin, async (req, res): Promise<void> => {
-  const { robloxId } = req.params;
+  const robloxId = String(req.params["robloxId"] ?? "");
   if (!robloxId || !/^\d+$/.test(robloxId)) {
     res.status(400).json({ error: "Invalid Roblox ID" });
     return;

@@ -1,6 +1,13 @@
 import { useState } from 'react';
 import { PageTransition } from '@/components/ui/page-transition';
-import { useListBoards, useCreateBoard, useDeleteBoard, getListBoardsQueryKey } from '@workspace/api-client-react';
+import {
+  useListBoards,
+  useCreateBoard,
+  useDeleteBoard,
+  useListTeams,
+  getListBoardsQueryKey,
+} from '@workspace/api-client-react';
+import type { Team } from '@workspace/api-client-react';
 import { KanbanBoard } from '@/components/planning/KanbanBoard';
 import { CalendarView } from '@/components/planning/CalendarView';
 import { NotesView } from '@/components/planning/NotesView';
@@ -10,15 +17,20 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
-import { Plus, Columns2, ArrowLeft, Trash2, CalendarDays, FileText } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Columns2, ArrowLeft, Trash2, CalendarDays, FileText, Users2, Lock, Globe } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SelectedBoard {
   id: number;
   name: string;
   color: string | null;
+  teamId: number | null;
+  teamName: string | null;
 }
 
 const BOARD_COLORS = [
@@ -35,13 +47,36 @@ const DOT_COLORS = [
   'bg-pink-400', 'bg-sky-400', 'bg-violet-400',
 ];
 
+function TeamBadge({ team }: { team: Pick<Team, 'name' | 'color'> }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium border"
+      style={{
+        backgroundColor: `${team.color}22`,
+        borderColor: `${team.color}55`,
+        color: team.color,
+      }}
+    >
+      <Lock className="w-2.5 h-2.5" />
+      {team.name}
+    </span>
+  );
+}
+
 export default function Planning() {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+
   const { data: boardsData, isLoading } = useListBoards();
+  const { data: teamsData } = useListTeams();
   const boards = Array.isArray(boardsData) ? boardsData : [];
+  const teams = Array.isArray(teamsData) ? teamsData : [];
+
   const [selectedBoard, setSelectedBoard] = useState<SelectedBoard | null>(null);
   const [newBoardDialog, setNewBoardDialog] = useState(false);
   const [boardName, setBoardName] = useState('');
+  const [boardTeamId, setBoardTeamId] = useState<string>('none');
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const createBoard = useCreateBoard();
@@ -50,10 +85,12 @@ export default function Planning() {
 
   const handleCreateBoard = async () => {
     if (!boardName.trim()) return;
-    await createBoard.mutateAsync({ data: { name: boardName.trim() } });
+    const teamId = boardTeamId !== 'none' ? Number(boardTeamId) : undefined;
+    await createBoard.mutateAsync({ data: { name: boardName.trim(), ...(teamId ? { teamId } : {}) } as any });
     queryClient.invalidateQueries({ queryKey: getListBoardsQueryKey() });
     setNewBoardDialog(false);
     setBoardName('');
+    setBoardTeamId('none');
   };
 
   const handleDeleteBoard = async (e: React.MouseEvent, id: number) => {
@@ -81,6 +118,12 @@ export default function Planning() {
             </button>
             <span className="text-muted-foreground/40">/</span>
             <h1 className="text-2xl font-bold tracking-tight">{selectedBoard.name}</h1>
+            {selectedBoard.teamName && (
+              <Badge className="ml-1 gap-1 text-xs" style={{ backgroundColor: '#ffffff15', borderColor: '#ffffff30' }}>
+                <Users2 className="w-3 h-3" />
+                {selectedBoard.teamName}
+              </Badge>
+            )}
           </div>
 
           <Tabs defaultValue="kanban" className="w-full flex-1">
@@ -130,41 +173,60 @@ export default function Planning() {
           animate="show"
           variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } }}
         >
-          {boards.map((board, idx) => (
-            <motion.div
-              key={board.id}
-              variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}
-            >
-              <Card
-                className={`cursor-pointer group hover:border-primary/30 transition-all border ${BOARD_COLORS[idx % BOARD_COLORS.length]}`}
-                onClick={() => setSelectedBoard({ id: board.id, name: board.name, color: board.color })}
+          {boards.map((board, idx) => {
+            const boardTeam = board.teamId ? teams.find(t => t.id === board.teamId) : null;
+            return (
+              <motion.div
+                key={board.id}
+                variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}
               >
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${DOT_COLORS[idx % DOT_COLORS.length]}`} />
-                      <Columns2 className="w-4 h-4 text-muted-foreground" />
+                <Card
+                  className={`cursor-pointer group hover:border-primary/30 transition-all border ${BOARD_COLORS[idx % BOARD_COLORS.length]}`}
+                  onClick={() => setSelectedBoard({
+                    id: board.id,
+                    name: board.name,
+                    color: board.color ?? null,
+                    teamId: board.teamId ?? null,
+                    teamName: board.teamName ?? null,
+                  })}
+                >
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${DOT_COLORS[idx % DOT_COLORS.length]}`} />
+                        <Columns2 className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {boardTeam ? (
+                          <TeamBadge team={boardTeam} />
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium text-muted-foreground/60 border border-border/30">
+                            <Globe className="w-2.5 h-2.5" />
+                            All
+                          </span>
+                        )}
+                        <button
+                          onClick={(e) => handleDeleteBoard(e, board.id)}
+                          disabled={deletingId === board.id}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-1 rounded"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
-                    <button
-                      onClick={(e) => handleDeleteBoard(e, board.id)}
-                      disabled={deletingId === board.id}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive p-1 rounded"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                  <h3 className="font-semibold text-base mb-1 group-hover:text-primary transition-colors">{board.name}</h3>
-                  {board.description && (
-                    <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{board.description}</p>
-                  )}
-                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-auto">
-                    <CalendarDays className="w-3 h-3" />
-                    {new Date(board.createdAt).toLocaleDateString()}
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
+                    <h3 className="font-semibold text-base mb-1 group-hover:text-primary transition-colors">{board.name}</h3>
+                    {board.description && (
+                      <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{board.description}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-auto">
+                      <CalendarDays className="w-3 h-3" />
+                      {new Date(board.createdAt).toLocaleDateString()}
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            );
+          })}
         </motion.div>
       ) : (
         <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -179,7 +241,7 @@ export default function Planning() {
         </div>
       )}
 
-      <Dialog open={newBoardDialog} onOpenChange={setNewBoardDialog}>
+      <Dialog open={newBoardDialog} onOpenChange={(o) => { setNewBoardDialog(o); if (!o) { setBoardName(''); setBoardTeamId('none'); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>{t('planning.newBoardDialog')}</DialogTitle>
@@ -189,9 +251,43 @@ export default function Planning() {
               placeholder={t('planning.boardNamePlaceholder')}
               value={boardName}
               onChange={e => setBoardName(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleCreateBoard()}
+              onKeyDown={e => e.key === 'Enter' && !isAdmin && handleCreateBoard()}
               autoFocus
             />
+            {isAdmin && teams.length > 0 && (
+              <div>
+                <label className="text-sm font-medium mb-1.5 block flex items-center gap-1.5">
+                  <Users2 className="w-3.5 h-3.5 text-muted-foreground" />
+                  Team visibility
+                </label>
+                <Select value={boardTeamId} onValueChange={setBoardTeamId}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">
+                      <span className="flex items-center gap-2">
+                        <Globe className="w-3.5 h-3.5 text-muted-foreground" />
+                        Visible to everyone
+                      </span>
+                    </SelectItem>
+                    {teams.map(team => (
+                      <SelectItem key={team.id} value={String(team.id)}>
+                        <span className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: team.color }} />
+                          {team.name} only
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {boardTeamId === 'none'
+                    ? 'This board will be visible to all members.'
+                    : `Only admins and ${teams.find(t => String(t.id) === boardTeamId)?.name} members will see this board.`}
+                </p>
+              </div>
+            )}
             <Button className="w-full" onClick={handleCreateBoard} disabled={createBoard.isPending || !boardName.trim()}>
               {createBoard.isPending ? t('planning.creating') : t('planning.createBoard')}
             </Button>

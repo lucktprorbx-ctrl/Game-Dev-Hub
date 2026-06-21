@@ -36,7 +36,7 @@ const container = {
 };
 const item = {
   hidden: { opacity: 0, y: 16 },
-  show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 260, damping: 22 } }
+  show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 260, damping: 22 } }
 };
 
 export default function Dashboard() {
@@ -274,10 +274,10 @@ export default function Dashboard() {
                                           animate={{ scale: [1, 1.3, 1], opacity: [1, 0.6, 1] }}
                                           transition={{ duration: 2, repeat: Infinity }}
                                         />
-                                        <span><strong className="text-foreground">{formatNumber(game.playing)}</strong> playing</span>
+                                        <span><strong className="text-foreground">{formatNumber(game.playing ?? 0)}</strong> playing</span>
                                       </span>
-                                      <span><strong className="text-foreground">{formatNumber(game.visits)}</strong> visits</span>
-                                      <span><strong className="text-foreground">{formatNumber(game.favoritedCount)}</strong> favorites</span>
+                                      <span><strong className="text-foreground">{formatNumber(game.visits ?? 0)}</strong> visits</span>
+                                      <span><strong className="text-foreground">{formatNumber(game.favoritedCount ?? 0)}</strong> favorites</span>
                                     </div>
                                   )}
                                   {game.isPrivate && (
@@ -329,7 +329,7 @@ export default function Dashboard() {
                   {users.slice(0, 8).map(u => (
                     <motion.div
                       key={u.id}
-                      variants={{ hidden: { opacity: 0, scale: 0.8 }, show: { opacity: 1, scale: 1, transition: { type: 'spring', stiffness: 260, damping: 18 } } }}
+                      variants={{ hidden: { opacity: 0, scale: 0.8 }, show: { opacity: 1, scale: 1, transition: { type: 'spring' as const, stiffness: 260, damping: 18 } } }}
                       whileHover={{ y: -2, scale: 1.05 }}
                       className="flex items-center gap-2"
                     >
@@ -376,7 +376,7 @@ export default function Dashboard() {
               {boards.slice(0, 3).map(board => (
                 <motion.div
                   key={board.id}
-                  variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 260, damping: 22 } } }}
+                  variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 260, damping: 22 } } }}
                   whileHover={{ y: -3, scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >

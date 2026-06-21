@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './addTeamMemberInput';
 export * from './board';
 export * from './boardColumn';
 export * from './boardDetail';
@@ -34,6 +35,11 @@ export * from './taskInputPriority';
 export * from './taskPriority';
 export * from './taskUpdate';
 export * from './taskUpdatePriority';
+export * from './team';
+export * from './teamInput';
+export * from './teamMember';
+export * from './teamMemberRole';
+export * from './teamUpdate';
 export * from './timeseriesPoint';
 export * from './user';
 export * from './userInput';

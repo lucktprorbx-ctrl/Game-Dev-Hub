@@ -29,9 +29,7 @@ export function CalendarView() {
   const endDate = endOfWeek(monthEnd, { weekStartsOn: 1 });
   const days = eachDayOfInterval({ start: startDate, end: endDate });
 
-  const { data: events } = useListEvents({
-    query: { queryKey: ['events', format(startDate, 'yyyy-MM-dd'), format(endDate, 'yyyy-MM-dd')] }
-  });
+  const { data: events } = useListEvents();
   const { data: users } = useListUsers();
 
   const createEvent = useCreateEvent();

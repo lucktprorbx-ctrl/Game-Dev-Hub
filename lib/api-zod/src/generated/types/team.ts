@@ -5,17 +5,14 @@
  * RoVerse Dashboard API
  * OpenAPI spec version: 0.1.0
  */
+import type { TeamMember } from './teamMember';
 
-export interface Board {
+export interface Team {
   id: number;
   name: string;
   /** @nullable */
   description?: string | null;
-  /** @nullable */
-  color?: string | null;
-  /** @nullable */
-  teamId?: number | null;
-  /** @nullable */
-  teamName?: string | null;
+  color: string;
   createdAt: Date;
+  members: TeamMember[];
 }

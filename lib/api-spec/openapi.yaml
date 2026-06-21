@@ -17,6 +17,8 @@ tags:
     description: User management
   - name: planning
     description: Collaborative planning
+  - name: teams
+    description: Team management for scoped planning boards
 
 paths:
   /healthz:
@@ -286,6 +288,138 @@ paths:
       responses:
         "204":
           description: Deleted
+
+  /planning/teams:
+    get:
+      operationId: listTeams
+      tags: [teams]
+      summary: List all teams with their members
+      responses:
+        "200":
+          description: Teams list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Team"
+
+    post:
+      operationId: createTeam
+      tags: [teams]
+      summary: Create a team (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeamInput"
+      responses:
+        "201":
+          description: Created team
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+
+  /planning/teams/{id}:
+    patch:
+      operationId: updateTeam
+      tags: [teams]
+      summary: Update a team (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TeamUpdate"
+      responses:
+        "200":
+          description: Updated team
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Team"
+
+    delete:
+      operationId: deleteTeam
+      tags: [teams]
+      summary: Delete a team (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /planning/teams/{id}/members:
+    post:
+      operationId: addTeamMember
+      tags: [teams]
+      summary: Add a member to a team (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddTeamMemberInput"
+      responses:
+        "201":
+          description: Added member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamMember"
+
+  /planning/teams/{id}/members/{userId}:
+    delete:
+      operationId: removeTeamMember
+      tags: [teams]
+      summary: Remove a member from a team (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Removed
+
+  /planning/my-teams:
+    get:
+      operationId: getMyTeams
+      tags: [teams]
+      summary: Get current user's team IDs
+      responses:
+        "200":
+          description: List of team IDs the user belongs to
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: integer
 
   /planning/boards:
     get:
@@ -840,6 +974,70 @@ components:
           type: number
           description: Percentage change vs last month
 
+    Team:
+      type: object
+      required: [id, name, color, createdAt, members]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        color:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamMember"
+
+    TeamInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        color:
+          type: string
+
+    TeamUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        color:
+          type: string
+
+    TeamMember:
+      type: object
+      required: [userId, username, role]
+      properties:
+        userId:
+          type: integer
+        username:
+          type: string
+        displayName:
+          type: ["string", "null"]
+        avatarUrl:
+          type: ["string", "null"]
+        role:
+          type: string
+          enum: [admin, collaborator]
+
+    AddTeamMemberInput:
+      type: object
+      required: [userId]
+      properties:
+        userId:
+          type: integer
+
     Board:
       type: object
       required: [id, name, createdAt]
@@ -851,6 +1049,10 @@ components:
         description:
           type: ["string", "null"]
         color:
+          type: ["string", "null"]
+        teamId:
+          type: ["integer", "null"]
+        teamName:
           type: ["string", "null"]
         createdAt:
           type: string
@@ -866,6 +1068,8 @@ components:
           type: string
         color:
           type: string
+        teamId:
+          type: integer
 
     BoardUpdate:
       type: object

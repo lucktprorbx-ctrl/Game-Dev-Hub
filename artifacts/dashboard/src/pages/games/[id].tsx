@@ -9,8 +9,8 @@ import { Users, Coins, TrendingUp } from 'lucide-react';
 export default function GameDetail() {
   const { id } = useParams();
   const gameId = parseInt(id || '0', 10);
-  const { data: game } = useGetGame(gameId, { query: { enabled: !!gameId } });
-  const { data: stats } = useGetGameStats(gameId, { query: { enabled: !!gameId } });
+  const { data: game } = useGetGame(gameId);
+  const { data: stats } = useGetGameStats(gameId);
   const { t } = useTranslation();
 
   if (!game || !stats) return <div className="p-8">Loading...</div>;

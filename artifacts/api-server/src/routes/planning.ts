@@ -1,13 +1,12 @@
 import { Router, type IRouter } from "express";
-import { db, boardsTable, boardColumnsTable, tasksTable, calendarEventsTable, usersTable, boardNotesTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { db, boardsTable, boardColumnsTable, tasksTable, calendarEventsTable, usersTable, boardNotesTable, teamMembersTable, teamsTable } from "@workspace/db";
+import { eq, and, isNull, inArray, or } from "drizzle-orm";
 import { requireAuth } from "../middlewares/requireAuth";
 import {
   GetBoardParams,
   UpdateBoardParams,
   UpdateBoardBody,
   DeleteBoardParams,
-  CreateBoardBody,
   ListTasksQueryParams,
   GetTaskParams,
   UpdateTaskParams,
@@ -44,8 +43,8 @@ function serializeUserInfo(u: DbUser | null | undefined) {
   };
 }
 
-function serializeBoard(b: typeof boardsTable.$inferSelect) {
-  return { ...b, createdAt: b.createdAt.toISOString() };
+function serializeBoard(b: typeof boardsTable.$inferSelect, teamName?: string | null) {
+  return { ...b, teamName: teamName ?? null, createdAt: b.createdAt.toISOString() };
 }
 
 function serializeTask(
@@ -89,35 +88,97 @@ function serializeNote(
   };
 }
 
-// Fetch all users once and build a map for lookups
 async function getUserMap(): Promise<Map<number, DbUser>> {
   const users = await db.select().from(usersTable);
   return new Map(users.map((u) => [u.id, u]));
 }
 
+async function getUserTeamIds(userId: number): Promise<number[]> {
+  const rows = await db
+    .select({ teamId: teamMembersTable.teamId })
+    .from(teamMembersTable)
+    .where(eq(teamMembersTable.userId, userId));
+  return rows.map(r => r.teamId);
+}
+
+async function getTeamNameMap(): Promise<Map<number, string>> {
+  const teams = await db.select({ id: teamsTable.id, name: teamsTable.name }).from(teamsTable);
+  return new Map(teams.map(t => [t.id, t.name]));
+}
+
+// Check if user can access a specific board
+async function canAccessBoard(userId: number, role: string, boardId: number): Promise<boolean> {
+  if (role === "admin") return true;
+  const [board] = await db.select({ teamId: boardsTable.teamId }).from(boardsTable).where(eq(boardsTable.id, boardId));
+  if (!board) return false;
+  if (board.teamId === null) return true;
+  const teamIds = await getUserTeamIds(userId);
+  return teamIds.includes(board.teamId);
+}
+
 // ── Boards ────────────────────────────────────────────────────────────────────
 
-router.get("/planning/boards", requireAuth, async (_req, res): Promise<void> => {
-  const boards = await db.select().from(boardsTable).orderBy(boardsTable.createdAt);
-  res.json(boards.map(serializeBoard));
+router.get("/planning/boards", requireAuth, async (req, res): Promise<void> => {
+  const user = req.user!;
+  const isAdmin = user.role === "admin";
+
+  let boards: typeof boardsTable.$inferSelect[];
+
+  if (isAdmin) {
+    boards = await db.select().from(boardsTable).orderBy(boardsTable.createdAt);
+  } else {
+    const teamIds = await getUserTeamIds(user.id);
+    if (teamIds.length === 0) {
+      boards = await db.select().from(boardsTable)
+        .where(isNull(boardsTable.teamId))
+        .orderBy(boardsTable.createdAt);
+    } else {
+      boards = await db.select().from(boardsTable)
+        .where(or(isNull(boardsTable.teamId), inArray(boardsTable.teamId, teamIds)))
+        .orderBy(boardsTable.createdAt);
+    }
+  }
+
+  const teamNameMap = await getTeamNameMap();
+  res.json(boards.map(b => serializeBoard(b, b.teamId ? teamNameMap.get(b.teamId) : null)));
 });
 
 router.post("/planning/boards", requireAuth, async (req, res): Promise<void> => {
-  const parsed = CreateBoardBody.safeParse(req.body);
-  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  const { name, description, color, teamId } = req.body as {
+    name?: unknown; description?: unknown; color?: unknown; teamId?: unknown;
+  };
 
-  const [board] = await db.insert(boardsTable).values(parsed.data).returning();
+  if (typeof name !== "string" || !name.trim()) {
+    res.status(400).json({ error: "name is required" });
+    return;
+  }
+
+  const parsedTeamId = teamId != null ? parseIntParam(teamId) : null;
+
+  const [board] = await db.insert(boardsTable).values({
+    name: name.trim(),
+    description: typeof description === "string" ? description.trim() || null : null,
+    color: typeof color === "string" ? color.trim() || null : null,
+    teamId: parsedTeamId,
+  }).returning();
+
   await db.insert(boardColumnsTable).values([
     { boardId: board.id, name: "To Do", position: 0 },
     { boardId: board.id, name: "In Progress", position: 1 },
     { boardId: board.id, name: "Done", position: 2 },
   ]);
-  res.status(201).json(serializeBoard(board));
+
+  const teamNameMap = await getTeamNameMap();
+  res.status(201).json(serializeBoard(board, board.teamId ? teamNameMap.get(board.teamId) : null));
 });
 
 router.get("/planning/boards/:id", requireAuth, async (req, res): Promise<void> => {
   const params = GetBoardParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+
+  const user = req.user!;
+  const hasAccess = await canAccessBoard(user.id, user.role, params.data.id);
+  if (!hasAccess) { res.status(403).json({ error: "Access denied" }); return; }
 
   const [board] = await db.select().from(boardsTable).where(eq(boardsTable.id, params.data.id));
   if (!board) { res.status(404).json({ error: "Board not found" }); return; }
@@ -128,6 +189,7 @@ router.get("/planning/boards/:id", requireAuth, async (req, res): Promise<void> 
 
   const tasks = await db.select().from(tasksTable).where(eq(tasksTable.boardId, board.id));
   const userMap = await getUserMap();
+  const teamNameMap = await getTeamNameMap();
 
   const columnsWithTasks = columns.map((col) => ({
     ...col,
@@ -141,23 +203,43 @@ router.get("/planning/boards/:id", requireAuth, async (req, res): Promise<void> 
       )),
   }));
 
-  res.json({ ...serializeBoard(board), columns: columnsWithTasks });
+  const serialized = serializeBoard(board, board.teamId ? teamNameMap.get(board.teamId) : null);
+  res.json({ ...serialized, columns: columnsWithTasks });
 });
 
 router.patch("/planning/boards/:id", requireAuth, async (req, res): Promise<void> => {
   const params = UpdateBoardParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+
+  const user = req.user!;
+  const hasAccess = await canAccessBoard(user.id, user.role, params.data.id);
+  if (!hasAccess) { res.status(403).json({ error: "Access denied" }); return; }
+
   const parsed = UpdateBoardBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
-  const [board] = await db.update(boardsTable).set(parsed.data).where(eq(boardsTable.id, params.data.id)).returning();
+  // Allow updating teamId if admin
+  const update: Record<string, unknown> = { ...parsed.data };
+  if (user.role === "admin" && "teamId" in req.body) {
+    update.teamId = req.body.teamId != null ? parseIntParam(req.body.teamId) : null;
+  }
+
+  const [board] = await db.update(boardsTable).set(update as any).where(eq(boardsTable.id, params.data.id)).returning();
   if (!board) { res.status(404).json({ error: "Board not found" }); return; }
-  res.json(serializeBoard(board));
+
+  const teamNameMap = await getTeamNameMap();
+  res.json(serializeBoard(board, board.teamId ? teamNameMap.get(board.teamId) : null));
 });
 
 router.delete("/planning/boards/:id", requireAuth, async (req, res): Promise<void> => {
   const params = DeleteBoardParams.safeParse(req.params);
   if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+
+  const user = req.user!;
+  if (user.role !== "admin") {
+    const hasAccess = await canAccessBoard(user.id, user.role, params.data.id);
+    if (!hasAccess) { res.status(403).json({ error: "Access denied" }); return; }
+  }
 
   const [board] = await db.delete(boardsTable).where(eq(boardsTable.id, params.data.id)).returning();
   if (!board) { res.status(404).json({ error: "Board not found" }); return; }
@@ -227,9 +309,11 @@ router.post("/planning/tasks", requireAuth, async (req, res): Promise<void> => {
   const parsed = CreateTaskBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
+  const { dueDate: rawDueDate, ...taskData } = parsed.data;
   const [task] = await db.insert(tasksTable).values({
-    ...parsed.data,
-    tags: parsed.data.tags ?? [],
+    ...taskData,
+    dueDate: rawDueDate != null ? String(rawDueDate) : null,
+    tags: taskData.tags ?? [],
     createdById: req.user!.id,
   }).returning();
 
@@ -262,7 +346,11 @@ router.patch("/planning/tasks/:id", requireAuth, async (req, res): Promise<void>
   const parsed = UpdateTaskBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
-  const [task] = await db.update(tasksTable).set(parsed.data).where(eq(tasksTable.id, params.data.id)).returning();
+  const { dueDate: rawDueDate2, ...updateFields } = parsed.data;
+  const [task] = await db.update(tasksTable).set({
+    ...updateFields,
+    ...(rawDueDate2 !== undefined ? { dueDate: rawDueDate2 != null ? String(rawDueDate2) : null } : {}),
+  }).where(eq(tasksTable.id, params.data.id)).returning();
   if (!task) { res.status(404).json({ error: "Task not found" }); return; }
 
   const userMap = await getUserMap();
@@ -288,6 +376,10 @@ router.get("/planning/boards/:boardId/notes", requireAuth, async (req, res): Pro
   const boardId = parseIntParam(req.params["boardId"]);
   if (!boardId) { res.status(400).json({ error: "Invalid boardId" }); return; }
 
+  const user = req.user!;
+  const hasAccess = await canAccessBoard(user.id, user.role, boardId);
+  if (!hasAccess) { res.status(403).json({ error: "Access denied" }); return; }
+
   const notes = await db.select().from(boardNotesTable)
     .where(eq(boardNotesTable.boardId, boardId))
     .orderBy(boardNotesTable.createdAt);
@@ -299,6 +391,11 @@ router.get("/planning/boards/:boardId/notes", requireAuth, async (req, res): Pro
 router.post("/planning/boards/:boardId/notes", requireAuth, async (req, res): Promise<void> => {
   const boardId = parseIntParam(req.params["boardId"]);
   if (!boardId) { res.status(400).json({ error: "Invalid boardId" }); return; }
+
+  const user = req.user!;
+  const hasAccess = await canAccessBoard(user.id, user.role, boardId);
+  if (!hasAccess) { res.status(403).json({ error: "Access denied" }); return; }
+
   const { title, content } = req.body as { title?: unknown; content?: unknown };
   if (typeof title !== "string" || !title.trim()) { res.status(400).json({ error: "title is required" }); return; }
 
@@ -339,7 +436,28 @@ router.delete("/planning/notes/:id", requireAuth, async (req, res): Promise<void
 // ── Calendar Events ───────────────────────────────────────────────────────────
 
 router.get("/planning/events", requireAuth, async (req, res): Promise<void> => {
-  const events = await db.select().from(calendarEventsTable).orderBy(calendarEventsTable.startDate);
+  const query = ListEventsQueryParams.safeParse(req.query);
+  if (!query.success) { res.status(400).json({ error: query.error.message }); return; }
+
+  const user = req.user!;
+  const isAdmin = user.role === "admin";
+
+  let events: typeof calendarEventsTable.$inferSelect[];
+  if (isAdmin) {
+    events = await db.select().from(calendarEventsTable).orderBy(calendarEventsTable.startDate);
+  } else {
+    const teamIds = await getUserTeamIds(user.id);
+    if (teamIds.length === 0) {
+      events = await db.select().from(calendarEventsTable)
+        .where(isNull(calendarEventsTable.teamId))
+        .orderBy(calendarEventsTable.startDate);
+    } else {
+      events = await db.select().from(calendarEventsTable)
+        .where(or(isNull(calendarEventsTable.teamId), inArray(calendarEventsTable.teamId, teamIds)))
+        .orderBy(calendarEventsTable.startDate);
+    }
+  }
+
   const userMap = await getUserMap();
   res.json(events.map((e) => serializeEvent(
     e,
@@ -352,12 +470,15 @@ router.post("/planning/events", requireAuth, async (req, res): Promise<void> => 
   const parsed = CreateEventBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
+  const teamId = req.body.teamId != null ? parseIntParam(req.body.teamId) : null;
+
   const [event] = await db.insert(calendarEventsTable).values({
     ...parsed.data,
     createdById: req.user!.id,
     startDate: new Date(parsed.data.startDate),
     endDate: parsed.data.endDate ? new Date(parsed.data.endDate) : null,
     allDay: parsed.data.allDay ?? false,
+    teamId,
   }).returning();
 
   const userMap = await getUserMap();

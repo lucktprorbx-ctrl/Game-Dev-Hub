@@ -1,0 +1,5 @@
+- [Teams system architecture](teams-system.md) — teamId on boards/events, filter by membership server-side; null=public, id=team-only.
+- [Framer Motion variants type fix](framer-motion-variants.md) — type: 'spring' in variants objects requires `as const` to satisfy AnimationGeneratorType in TS strict mode.
+- [Roblox CCU API](roblox-api.md) — public endpoint games.roblox.com/v1/games?universeIds={id} gives playing/visits/favoritedCount; revenue is estimated (no public API).
+- [Orval generated hook pattern](orval-hooks.md) — useGetMe/useGetGame etc require queryKey in query options in Tanstack Query v5; use getXxxQueryKey() helper.
+- [dueDate text column](duedate-column.md) — tasksTable.dueDate is text("due_date"), Orval generates Date type from format:date; convert with String() before insert/update.

@@ -19,7 +19,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
   const { data: user, isLoading, isError } = useGetMe({ 
     query: { 
-      retry: false 
+      queryKey: getGetMeQueryKey(),
+      retry: false,
     } 
   });
 

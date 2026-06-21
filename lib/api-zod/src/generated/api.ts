@@ -261,6 +261,101 @@ export const DeleteUserParams = zod.object({
 
 
 /**
+ * @summary List all teams with their members
+ */
+export const ListTeamsResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "color": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "members": zod.array(zod.object({
+  "userId": zod.number(),
+  "username": zod.string(),
+  "displayName": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "role": zod.enum(['admin', 'collaborator'])
+}))
+})
+export const ListTeamsResponse = zod.array(ListTeamsResponseItem)
+
+
+/**
+ * @summary Create a team (admin only)
+ */
+export const CreateTeamBody = zod.object({
+  "name": zod.string(),
+  "description": zod.string().optional(),
+  "color": zod.string().optional()
+})
+
+
+/**
+ * @summary Update a team (admin only)
+ */
+export const UpdateTeamParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateTeamBody = zod.object({
+  "name": zod.string().optional(),
+  "description": zod.string().nullish(),
+  "color": zod.string().optional()
+})
+
+export const UpdateTeamResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "color": zod.string(),
+  "createdAt": zod.coerce.date(),
+  "members": zod.array(zod.object({
+  "userId": zod.number(),
+  "username": zod.string(),
+  "displayName": zod.string().nullish(),
+  "avatarUrl": zod.string().nullish(),
+  "role": zod.enum(['admin', 'collaborator'])
+}))
+})
+
+
+/**
+ * @summary Delete a team (admin only)
+ */
+export const DeleteTeamParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Add a member to a team (admin only)
+ */
+export const AddTeamMemberParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const AddTeamMemberBody = zod.object({
+  "userId": zod.number()
+})
+
+
+/**
+ * @summary Remove a member from a team (admin only)
+ */
+export const RemoveTeamMemberParams = zod.object({
+  "id": zod.coerce.number(),
+  "userId": zod.coerce.number()
+})
+
+
+/**
+ * @summary Get current user's team IDs
+ */
+export const GetMyTeamsResponseItem = zod.number()
+export const GetMyTeamsResponse = zod.array(GetMyTeamsResponseItem)
+
+
+/**
  * @summary List all planning boards
  */
 export const ListBoardsResponseItem = zod.object({
@@ -268,6 +363,8 @@ export const ListBoardsResponseItem = zod.object({
   "name": zod.string(),
   "description": zod.string().nullish(),
   "color": zod.string().nullish(),
+  "teamId": zod.number().nullish(),
+  "teamName": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
 export const ListBoardsResponse = zod.array(ListBoardsResponseItem)
@@ -279,7 +376,8 @@ export const ListBoardsResponse = zod.array(ListBoardsResponseItem)
 export const CreateBoardBody = zod.object({
   "name": zod.string(),
   "description": zod.string().optional(),
-  "color": zod.string().optional()
+  "color": zod.string().optional(),
+  "teamId": zod.number().optional()
 })
 
 
@@ -337,6 +435,8 @@ export const UpdateBoardResponse = zod.object({
   "name": zod.string(),
   "description": zod.string().nullish(),
   "color": zod.string().nullish(),
+  "teamId": zod.number().nullish(),
+  "teamName": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
 

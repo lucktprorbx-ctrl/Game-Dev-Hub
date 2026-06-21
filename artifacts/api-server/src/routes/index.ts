@@ -5,6 +5,7 @@ import gamesRouter from "./games";
 import usersRouter from "./users";
 import planningRouter from "./planning";
 import groupsRouter from "./groups";
+import teamsRouter from "./teams";
 
 const router: IRouter = Router();
 
@@ -14,5 +15,6 @@ router.use(gamesRouter);
 router.use(usersRouter);
 router.use(planningRouter);
 router.use(groupsRouter);
+router.use(teamsRouter);
 
 export default router;

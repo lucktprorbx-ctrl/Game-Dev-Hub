@@ -6,9 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface BoardInput {
+export interface TeamInput {
   name: string;
   description?: string;
   color?: string;
-  teamId?: number;
 }

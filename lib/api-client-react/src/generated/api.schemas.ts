@@ -135,6 +135,51 @@ export interface RevenueTrackerEntry {
   trend: number;
 }
 
+export type TeamMemberRole = typeof TeamMemberRole[keyof typeof TeamMemberRole];
+
+
+export const TeamMemberRole = {
+  admin: 'admin',
+  collaborator: 'collaborator',
+} as const;
+
+export interface TeamMember {
+  userId: number;
+  username: string;
+  /** @nullable */
+  displayName?: string | null;
+  /** @nullable */
+  avatarUrl?: string | null;
+  role: TeamMemberRole;
+}
+
+export interface Team {
+  id: number;
+  name: string;
+  /** @nullable */
+  description?: string | null;
+  color: string;
+  createdAt: string;
+  members: TeamMember[];
+}
+
+export interface TeamInput {
+  name: string;
+  description?: string;
+  color?: string;
+}
+
+export interface TeamUpdate {
+  name?: string;
+  /** @nullable */
+  description?: string | null;
+  color?: string;
+}
+
+export interface AddTeamMemberInput {
+  userId: number;
+}
+
 export interface Board {
   id: number;
   name: string;
@@ -142,6 +187,10 @@ export interface Board {
   description?: string | null;
   /** @nullable */
   color?: string | null;
+  /** @nullable */
+  teamId?: number | null;
+  /** @nullable */
+  teamName?: string | null;
   createdAt: string;
 }
 
@@ -149,6 +198,7 @@ export interface BoardInput {
   name: string;
   description?: string;
   color?: string;
+  teamId?: number;
 }
 
 export interface BoardUpdate {
