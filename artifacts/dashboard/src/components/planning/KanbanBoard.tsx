@@ -20,6 +20,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { getAvatarClasses, getSubroleClasses } from '@/lib/role-colors';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 
 interface KanbanBoardProps {
   boardId: number;

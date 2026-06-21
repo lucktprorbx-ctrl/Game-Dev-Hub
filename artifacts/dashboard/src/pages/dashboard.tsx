@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Users, Columns2, CalendarDays, Shield, ChevronDown, ChevronRight, Eye, Lock, Gamepad2, TrendingUp } from 'lucide-react';
 import { motion, animate, AnimatePresence } from 'framer-motion';
 import { Link } from 'wouter';
+import { useTranslation } from 'react-i18next';
 
 const GROUP_ID = '1030701459';
 
@@ -41,6 +42,7 @@ const item = {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const isAdmin = user?.role === 'admin';
   const { data: users, isLoading: usersLoading } = useListUsers();
   const { data: boards, isLoading: boardsLoading } = useListBoards();
@@ -55,18 +57,18 @@ export default function Dashboard() {
 
   const stats = [
     {
-      label: 'Team Members',
+      label: t('dashboard.teamMembers'),
       value: users?.length ?? 0,
-      sub: `${adminCount} admin${adminCount !== 1 ? 's' : ''} · ${collaboratorCount} collaborator${collaboratorCount !== 1 ? 's' : ''}`,
+      sub: `${t('dashboard.admins', { count: adminCount })} · ${t('dashboard.collaborators', { count: collaboratorCount })}`,
       icon: Users,
       iconColor: 'text-amber-400',
       bg: 'bg-amber-500/10',
       accent: 'hover:border-amber-500/30 hover:shadow-amber-500/5',
     },
     {
-      label: 'Planning Boards',
+      label: t('dashboard.planningBoards'),
       value: boards?.length ?? 0,
-      sub: boards?.length === 0 ? 'No boards yet — create one in Planning' : `${boards?.length} active board${(boards?.length ?? 0) !== 1 ? 's' : ''}`,
+      sub: (boards?.length ?? 0) === 0 ? t('dashboard.noBoardsYet') : t('dashboard.activeBoards', { count: boards?.length ?? 0 }),
       icon: Columns2,
       iconColor: 'text-indigo-400',
       bg: 'bg-indigo-500/10',
@@ -83,8 +85,9 @@ export default function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: 'easeOut' }}
         >
-          <h1 className="text-3xl font-bold tracking-tight">
-            Welcome back, <motion.span
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+            {t('dashboard.welcomeBack', { name: '\x00' }).split('\x00')[0]}
+            <motion.span
               className="text-primary"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -92,8 +95,9 @@ export default function Dashboard() {
             >
               {user?.robloxDisplayName || user?.robloxUsername}
             </motion.span>
+            {t('dashboard.welcomeBack', { name: '\x00' }).split('\x00')[1]}
           </h1>
-          <p className="text-muted-foreground mt-1">Here's what's happening with your studio.</p>
+          <p className="text-muted-foreground mt-1">{t('dashboard.subtitle')}</p>
         </motion.div>
 
         {/* Stats row */}
@@ -145,10 +149,10 @@ export default function Dashboard() {
         {/* Roblox Group section */}
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, type: 'spring', stiffness: 200, damping: 22 }}>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold">Roblox Group</h2>
+            <h2 className="text-lg font-semibold">{t('dashboard.robloxGroup')}</h2>
             {!isAdmin && (
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Eye className="w-3 h-3" /> CCU &amp; visits visible
+                <Eye className="w-3 h-3" /> {t('dashboard.ccuVisible')}
               </span>
             )}
           </div>
@@ -303,7 +307,7 @@ export default function Dashboard() {
           ) : (
             <Card>
               <CardContent className="p-5 text-center text-sm text-muted-foreground">
-                Unable to load group info from Roblox.
+                {t('dashboard.unableToLoadGroup')}
               </CardContent>
             </Card>
           )}
@@ -313,9 +317,9 @@ export default function Dashboard() {
         {!usersLoading && users && users.length > 0 && (
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25, type: 'spring', stiffness: 200, damping: 22 }}>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold">Team</h2>
+              <h2 className="text-lg font-semibold">{t('dashboard.team')}</h2>
               <Link href="/users" className="text-xs text-muted-foreground hover:text-primary transition-colors">
-                Manage →
+                {t('dashboard.manage')}
               </Link>
             </div>
             <Card>
@@ -342,15 +346,15 @@ export default function Dashboard() {
                       )}
                       <div className="min-w-0">
                         <div className="text-sm font-medium truncate max-w-[100px]">{u.robloxDisplayName || u.robloxUsername}</div>
-                        <div className={`text-[10px] font-medium ${u.role === 'admin' ? 'text-amber-400' : 'text-indigo-400'} flex items-center gap-0.5`}>
+                        <div className={`text-[10px] font-medium ${u.role === 'admin' ? 'text-red-400' : 'text-indigo-400'} flex items-center gap-0.5`}>
                           {u.role === 'admin' && <Shield className="w-2.5 h-2.5" />}
-                          <span className="capitalize">{u.role}</span>
+                          <span>{u.role === 'admin' ? t('dashboard.admin') : t('dashboard.collaborator')}</span>
                         </div>
                       </div>
                     </motion.div>
                   ))}
                   {users.length > 8 && (
-                    <div className="flex items-center text-xs text-muted-foreground">+{users.length - 8} more</div>
+                    <div className="flex items-center text-xs text-muted-foreground">{t('dashboard.moreUsers', { count: users.length - 8 })}</div>
                   )}
                 </motion.div>
               </CardContent>

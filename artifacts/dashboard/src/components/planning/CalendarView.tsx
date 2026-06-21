@@ -8,6 +8,7 @@ import { Check, ChevronLeft, ChevronRight, Plus, Trash2, CalendarPlus } from 'lu
 import { startOfMonth, endOfMonth, eachDayOfInterval, format, isSameMonth, isToday, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
 import { getAvatarClasses } from '@/lib/role-colors';
+import { useTranslation } from 'react-i18next';
 
 const EVENT_COLORS = ['#f59e0b', '#6366f1', '#10b981', '#ef4444', '#8b5cf6', '#06b6d4'];
 
