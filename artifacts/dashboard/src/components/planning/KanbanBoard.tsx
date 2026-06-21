@@ -63,12 +63,6 @@ function UserAvatar({ user, size = 'sm' }: { user: UserInfo; size?: 'sm' | 'md' 
   );
 }
 
-const cardVariants = {
-  hidden: { opacity: 0, y: 8, scale: 0.97 },
-  show: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 24 } },
-  exit: { opacity: 0, y: -4, scale: 0.97, transition: { duration: 0.15 } },
-};
-
 export function KanbanBoard({ boardId }: KanbanBoardProps) {
   const { data: board, isLoading: boardLoading } = useGetBoard(boardId, {
     query: { queryKey: getGetBoardQueryKey(boardId) }
@@ -89,12 +83,12 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
   const [taskPriority, setTaskPriority] = useState<'low' | 'medium' | 'high' | ''>('');
   const [taskTags, setTaskTags] = useState('');
   const [taskAssigneeId, setTaskAssigneeId] = useState<string>('');
+  const [assigneePopoverTaskId, setAssigneePopoverTaskId] = useState<number | null>(null);
 
   const [addingCol, setAddingCol] = useState(false);
   const [newColName, setNewColName] = useState('');
   const [editingColId, setEditingColId] = useState<number | null>(null);
   const [editingColName, setEditingColName] = useState('');
-  const [assigneePopoverTaskId, setAssigneePopoverTaskId] = useState<number | null>(null);
   const newColInputRef = useRef<HTMLInputElement>(null);
   const editColInputRef = useRef<HTMLInputElement>(null);
 
@@ -257,152 +251,134 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
                             {...provided.droppableProps}
                             className={`p-2 flex-1 space-y-2 min-h-[80px] transition-colors ${snapshot.isDraggingOver ? 'bg-primary/5' : ''}`}
                           >
-                            <AnimatePresence initial={false}>
-                              {[...column.tasks].sort((a, b) => a.position - b.position).map((task, index) => {
-                                const assignee = (task as any).assignee as UserInfo;
-                                const createdBy = (task as any).createdBy as UserInfo;
-                                return (
-                                  <Draggable key={task.id} draggableId={task.id.toString()} index={index}>
-                                    {(provided, snapshot) => (
-                                      <motion.div
-                                        ref={provided.innerRef}
-                                        {...provided.draggableProps}
-                                        {...provided.dragHandleProps}
-                                        variants={cardVariants}
-                                        initial="hidden"
-                                        animate="show"
-                                        exit="exit"
-                                        whileHover={!snapshot.isDragging ? { y: -2, transition: { duration: 0.15 } } : undefined}
-                                        layout
-                                      >
-                                        <Card
-                                          className={`cursor-grab active:cursor-grabbing group transition-all ${snapshot.isDragging ? 'ring-1 ring-primary shadow-lg shadow-primary/10 scale-[1.02]' : 'hover:border-border/80 hover:shadow-md hover:shadow-black/20'}`}
-                                        >
-                                          <CardContent className="p-3">
-                                            <div className="flex justify-between items-start gap-2 mb-1">
-                                              <span className="font-medium text-sm leading-snug flex-1">{task.title}</span>
-                                              <button
-                                                onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }}
-                                                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive flex-shrink-0"
+                            {[...column.tasks].sort((a, b) => a.position - b.position).map((task, index) => {
+                              const assignee = (task as any).assignee as UserInfo;
+                              const createdBy = (task as any).createdBy as UserInfo;
+                              return (
+                                <Draggable key={task.id} draggableId={task.id.toString()} index={index}>
+                                  {(provided, snapshot) => (
+                                    <div
+                                      ref={provided.innerRef}
+                                      {...provided.draggableProps}
+                                      {...provided.dragHandleProps}
+                                      className="group"
+                                    >
+                                      <Card className={`cursor-grab active:cursor-grabbing transition-all ${snapshot.isDragging ? 'ring-1 ring-primary shadow-lg shadow-primary/10 scale-[1.02]' : 'hover:border-border/80 hover:shadow-md hover:shadow-black/20 hover:-translate-y-0.5'}`}>
+                                        <CardContent className="p-3">
+                                          <div className="flex justify-between items-start gap-2 mb-1">
+                                            <span className="font-medium text-sm leading-snug flex-1">{task.title}</span>
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }}
+                                              className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive flex-shrink-0"
+                                            >
+                                              <Trash2 className="w-3 h-3" />
+                                            </button>
+                                          </div>
+                                          {task.description && (
+                                            <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{task.description}</p>
+                                          )}
+                                          {task.tags && task.tags.length > 0 && (
+                                            <div className="flex gap-1 flex-wrap mb-2">
+                                              {task.tags.map(tag => (
+                                                <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-border/50">{tag}</Badge>
+                                              ))}
+                                            </div>
+                                          )}
+                                          <div className="flex justify-between items-center mt-1">
+                                            <div className="flex items-center gap-1.5">
+                                              {task.priority && (
+                                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium uppercase ${PRIORITY_COLORS[task.priority]}`}>
+                                                  {task.priority}
+                                                </span>
+                                              )}
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                              {/* Creator avatar */}
+                                              {createdBy && (
+                                                <div title={`Created by @${createdBy.username}`}>
+                                                  <UserAvatar user={createdBy} size="sm" />
+                                                </div>
+                                              )}
+                                              {/* Assignee chip — clickable popover */}
+                                              <Popover
+                                                open={assigneePopoverTaskId === task.id}
+                                                onOpenChange={(open) => setAssigneePopoverTaskId(open ? task.id : null)}
                                               >
-                                                <Trash2 className="w-3 h-3" />
-                                              </button>
-                                            </div>
-                                            {task.description && (
-                                              <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{task.description}</p>
-                                            )}
-                                            {task.tags && task.tags.length > 0 && (
-                                              <div className="flex gap-1 flex-wrap mb-2">
-                                                {task.tags.map(tag => (
-                                                  <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-border/50">{tag}</Badge>
-                                                ))}
-                                              </div>
-                                            )}
-                                            <div className="flex justify-between items-center mt-1">
-                                              <div className="flex items-center gap-1.5">
-                                                {task.priority && (
-                                                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium uppercase ${PRIORITY_COLORS[task.priority]}`}>
-                                                    {task.priority}
-                                                  </span>
-                                                )}
-                                              </div>
-                                              <div className="flex items-center gap-1.5">
-                                                {/* Creator chip (small) */}
-                                                {createdBy && (
-                                                  <div title={`Created by @${createdBy.username}`}>
-                                                    <UserAvatar user={createdBy} size="sm" />
-                                                  </div>
-                                                )}
-
-                                                {/* Assignee chip — clickable to edit */}
-                                                <Popover
-                                                  open={assigneePopoverTaskId === task.id}
-                                                  onOpenChange={(open) => setAssigneePopoverTaskId(open ? task.id : null)}
-                                                >
-                                                  <PopoverTrigger asChild>
-                                                    <button
-                                                      onClick={(e) => e.stopPropagation()}
-                                                      className="flex items-center gap-1 focus:outline-none"
-                                                      title="Change assignee"
-                                                    >
-                                                      {assignee ? (
-                                                        <motion.div
-                                                          whileHover={{ scale: 1.15 }}
-                                                          transition={{ type: 'spring', stiffness: 400, damping: 15 }}
-                                                          className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium cursor-pointer hover:ring-2 hover:ring-primary/40 transition-all ${getAvatarClasses(assignee.role, assignee.subroles)}`}
-                                                        >
-                                                          {assignee.avatarUrl ? (
-                                                            <img src={assignee.avatarUrl} alt="" className="w-3.5 h-3.5 rounded-full" />
-                                                          ) : null}
-                                                          <span>{assignee.displayName || assignee.username}</span>
-                                                        </motion.div>
-                                                      ) : (
-                                                        <motion.div
-                                                          whileHover={{ scale: 1.1, opacity: 1 }}
-                                                          className="opacity-0 group-hover:opacity-60 flex items-center gap-0.5 text-[10px] text-muted-foreground border border-dashed border-border/60 px-1.5 py-0.5 rounded-full transition-opacity cursor-pointer hover:border-primary/40"
-                                                        >
-                                                          <UserCog className="w-3 h-3" />
-                                                          <span>Assign</span>
-                                                        </motion.div>
-                                                      )}
-                                                    </button>
-                                                  </PopoverTrigger>
-                                                  <PopoverContent
-                                                    className="w-52 p-1.5"
-                                                    side="top"
-                                                    align="end"
+                                                <PopoverTrigger asChild>
+                                                  <button
                                                     onClick={(e) => e.stopPropagation()}
+                                                    className="flex items-center gap-1 focus:outline-none"
+                                                    title="Change assignee"
                                                   >
-                                                    <p className="text-[10px] text-muted-foreground px-2 py-1 uppercase tracking-wider font-semibold">Assign to</p>
-                                                    {/* Unassign option */}
-                                                    <button
-                                                      onClick={() => handleChangeAssignee(task.id, null)}
-                                                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm hover:bg-muted/60 transition-colors text-left ${!assignee ? 'bg-muted/40' : ''}`}
-                                                    >
-                                                      <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                                                        <User className="w-3 h-3 text-muted-foreground" />
-                                                      </div>
-                                                      <span className="text-muted-foreground text-xs">Unassigned</span>
-                                                      {!assignee && <Check className="w-3 h-3 ml-auto text-primary" />}
-                                                    </button>
-                                                    <div className="my-1 border-t border-border/40" />
-                                                    {users?.map(u => {
-                                                      const isSelected = assignee?.id === u.id;
-                                                      return (
-                                                        <button
-                                                          key={u.id}
-                                                          onClick={() => handleChangeAssignee(task.id, u.id)}
-                                                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm hover:bg-muted/60 transition-colors text-left ${isSelected ? 'bg-muted/40' : ''}`}
-                                                        >
-                                                          {u.robloxAvatarUrl ? (
-                                                            <img src={u.robloxAvatarUrl} alt="" className="w-6 h-6 rounded-full flex-shrink-0" />
-                                                          ) : (
-                                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0 ${getAvatarClasses(u.role, u.subroles ?? [])}`}>
-                                                              {u.robloxUsername.charAt(0)}
-                                                            </div>
-                                                          )}
-                                                          <div className="flex-1 min-w-0">
-                                                            <div className="text-xs font-medium truncate">{u.robloxDisplayName || u.robloxUsername}</div>
-                                                            {u.subroles?.[0] && (
-                                                              <div className={`text-[9px] px-1 rounded-sm inline-block ${getSubroleClasses(u.subroles[0])}`}>{u.subroles[0]}</div>
-                                                            )}
+                                                    {assignee ? (
+                                                      <span className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium cursor-pointer hover:ring-2 hover:ring-primary/40 transition-all ${getAvatarClasses(assignee.role, assignee.subroles)}`}>
+                                                        {assignee.avatarUrl && (
+                                                          <img src={assignee.avatarUrl} alt="" className="w-3.5 h-3.5 rounded-full" />
+                                                        )}
+                                                        <span>{assignee.displayName || assignee.username}</span>
+                                                      </span>
+                                                    ) : (
+                                                      <span className="opacity-0 group-hover:opacity-60 flex items-center gap-0.5 text-[10px] text-muted-foreground border border-dashed border-border/60 px-1.5 py-0.5 rounded-full transition-opacity cursor-pointer hover:border-primary/40 hover:opacity-100">
+                                                        <UserCog className="w-3 h-3" />
+                                                        <span>Assign</span>
+                                                      </span>
+                                                    )}
+                                                  </button>
+                                                </PopoverTrigger>
+                                                <PopoverContent
+                                                  className="w-52 p-1.5"
+                                                  side="top"
+                                                  align="end"
+                                                  onClick={(e) => e.stopPropagation()}
+                                                >
+                                                  <p className="text-[10px] text-muted-foreground px-2 py-1 uppercase tracking-wider font-semibold">Assign to</p>
+                                                  <button
+                                                    onClick={() => handleChangeAssignee(task.id, null)}
+                                                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm hover:bg-muted/60 transition-colors text-left ${!assignee ? 'bg-muted/40' : ''}`}
+                                                  >
+                                                    <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                                                      <User className="w-3 h-3 text-muted-foreground" />
+                                                    </div>
+                                                    <span className="text-muted-foreground text-xs">Unassigned</span>
+                                                    {!assignee && <Check className="w-3 h-3 ml-auto text-primary" />}
+                                                  </button>
+                                                  <div className="my-1 border-t border-border/40" />
+                                                  {users?.map(u => {
+                                                    const isSelected = assignee?.id === u.id;
+                                                    return (
+                                                      <button
+                                                        key={u.id}
+                                                        onClick={() => handleChangeAssignee(task.id, u.id)}
+                                                        className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm hover:bg-muted/60 transition-colors text-left ${isSelected ? 'bg-muted/40' : ''}`}
+                                                      >
+                                                        {u.robloxAvatarUrl ? (
+                                                          <img src={u.robloxAvatarUrl} alt="" className="w-6 h-6 rounded-full flex-shrink-0" />
+                                                        ) : (
+                                                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0 ${getAvatarClasses(u.role, u.subroles ?? [])}`}>
+                                                            {u.robloxUsername.charAt(0)}
                                                           </div>
-                                                          {isSelected && <Check className="w-3 h-3 flex-shrink-0 text-primary" />}
-                                                        </button>
-                                                      );
-                                                    })}
-                                                  </PopoverContent>
-                                                </Popover>
-                                              </div>
+                                                        )}
+                                                        <div className="flex-1 min-w-0">
+                                                          <div className="text-xs font-medium truncate">{u.robloxDisplayName || u.robloxUsername}</div>
+                                                          {u.subroles?.[0] && (
+                                                            <div className={`text-[9px] px-1 rounded-sm inline-block ${getSubroleClasses(u.subroles[0])}`}>{u.subroles[0]}</div>
+                                                          )}
+                                                        </div>
+                                                        {isSelected && <Check className="w-3 h-3 flex-shrink-0 text-primary" />}
+                                                      </button>
+                                                    );
+                                                  })}
+                                                </PopoverContent>
+                                              </Popover>
                                             </div>
-                                          </CardContent>
-                                        </Card>
-                                      </motion.div>
-                                    )}
-                                  </Draggable>
-                                );
-                              })}
-                            </AnimatePresence>
+                                          </div>
+                                        </CardContent>
+                                      </Card>
+                                    </div>
+                                  )}
+                                </Draggable>
+                              );
+                            })}
                             {provided.placeholder}
                           </div>
                         )}
@@ -410,14 +386,12 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
 
                       {/* Add task button */}
                       <div className="p-2 border-t border-border/50">
-                        <motion.button
-                          whileHover={{ backgroundColor: 'hsl(var(--muted)/0.5)' }}
-                          whileTap={{ scale: 0.98 }}
+                        <button
                           onClick={() => openTaskDialog(column.id)}
-                          className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground rounded-md transition-colors"
+                          className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors"
                         >
                           <Plus className="w-3.5 h-3.5" /> Add task
-                        </motion.button>
+                        </button>
                       </div>
                     </div>
                   )}
@@ -457,10 +431,10 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
                       key="add-btn"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      whileHover={{ borderColor: 'hsl(var(--primary)/0.4)', color: 'hsl(var(--foreground))' }}
+                      whileHover={{ borderColor: 'hsl(var(--primary)/0.4)' }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => setAddingCol(true)}
-                      className="w-full flex items-center gap-2 py-3 px-4 rounded-lg border border-dashed border-border/60 text-sm text-muted-foreground transition-colors"
+                      className="w-full flex items-center gap-2 py-3 px-4 rounded-lg border border-dashed border-border/60 text-sm text-muted-foreground hover:text-foreground transition-colors"
                     >
                       <Plus className="w-4 h-4" /> Add Column
                     </motion.button>
