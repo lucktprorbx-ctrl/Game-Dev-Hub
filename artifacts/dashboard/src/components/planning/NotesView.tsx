@@ -6,18 +6,43 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Plus, Trash2, FileText, Save, Pencil } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getAvatarClasses } from '@/lib/role-colors';
+
+interface UserInfo {
+  id: number;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  role: string;
+  subroles: string[];
+}
 
 interface Note {
   id: number;
   boardId: number;
   title: string;
   content: string;
+  createdBy: UserInfo | null;
   createdAt: string;
   updatedAt: string;
 }
 
 interface NotesViewProps {
   boardId: number;
+}
+
+function CreatorChip({ user }: { user: UserInfo }) {
+  const classes = getAvatarClasses(user.role, user.subroles);
+  return (
+    <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${classes}`}>
+      {user.avatarUrl ? (
+        <img src={user.avatarUrl} alt="" className="w-3 h-3 rounded-full" />
+      ) : (
+        <span className="font-bold">{user.username.charAt(0).toUpperCase()}</span>
+      )}
+      <span>{user.displayName || user.username}</span>
+    </div>
+  );
 }
 
 export function NotesView({ boardId }: NotesViewProps) {
@@ -93,9 +118,7 @@ export function NotesView({ boardId }: NotesViewProps) {
     await fetch(`/api/planning/notes/${id}`, { method: 'DELETE' });
     setNotes(prev => prev.filter(n => n.id !== id));
     if (selectedNote?.id === id) {
-      setSelectedNote(null);
-      setEditTitle('');
-      setEditContent('');
+      setSelectedNote(null); setEditTitle(''); setEditContent('');
     }
   };
 
@@ -112,25 +135,15 @@ export function NotesView({ boardId }: NotesViewProps) {
 
   return (
     <div className="flex gap-4" style={{ minHeight: '480px' }}>
-      {/* Left panel — note list */}
+      {/* Left — note list */}
       <div className="w-64 flex flex-col gap-2 flex-shrink-0">
-        <Button
-          size="sm"
-          className="w-full gap-1.5 justify-start"
-          onClick={() => { setCreating(true); setSelectedNote(null); setNewTitle(''); }}
-        >
-          <Plus className="w-4 h-4" />
-          {t('planning.newNote')}
+        <Button size="sm" className="w-full gap-1.5 justify-start" onClick={() => { setCreating(true); setSelectedNote(null); setNewTitle(''); }}>
+          <Plus className="w-4 h-4" />{t('planning.newNote')}
         </Button>
 
         <AnimatePresence>
           {creating && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              className="flex flex-col gap-1.5"
-            >
+            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="flex flex-col gap-1.5">
               <Input
                 autoFocus
                 placeholder={t('planning.noteTitlePlaceholder')}
@@ -143,12 +156,8 @@ export function NotesView({ boardId }: NotesViewProps) {
                 className="h-8 text-sm"
               />
               <div className="flex gap-1">
-                <Button size="sm" className="h-7 flex-1 text-xs" onClick={handleCreate} disabled={saving || !newTitle.trim()}>
-                  {t('common.create')}
-                </Button>
-                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setCreating(false)}>
-                  {t('common.cancel')}
-                </Button>
+                <Button size="sm" className="h-7 flex-1 text-xs" onClick={handleCreate} disabled={saving || !newTitle.trim()}>{t('common.create')}</Button>
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setCreating(false)}>{t('common.cancel')}</Button>
               </div>
             </motion.div>
           )}
@@ -175,8 +184,10 @@ export function NotesView({ boardId }: NotesViewProps) {
               <div className="flex items-start justify-between gap-1">
                 <div className="truncate flex-1 min-w-0">
                   <div className="font-medium truncate">{note.title}</div>
-                  {note.content && (
-                    <div className="text-xs opacity-60 truncate mt-0.5">{note.content.slice(0, 50)}</div>
+                  {note.createdBy && (
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <CreatorChip user={note.createdBy} />
+                    </div>
                   )}
                 </div>
                 <button
@@ -191,7 +202,7 @@ export function NotesView({ boardId }: NotesViewProps) {
         </div>
       </div>
 
-      {/* Right panel — editor */}
+      {/* Right — editor */}
       <div className="flex-1 flex flex-col gap-3 min-w-0">
         {selectedNote ? (
           <>
@@ -202,12 +213,7 @@ export function NotesView({ boardId }: NotesViewProps) {
                 className="font-semibold text-base border-0 border-b border-border/40 rounded-none px-0 h-9 focus-visible:ring-0 focus-visible:border-primary/50 bg-transparent"
                 placeholder={t('planning.noteTitlePlaceholder')}
               />
-              <Button
-                size="sm"
-                onClick={handleSave}
-                disabled={saving || !isDirty}
-                className="gap-1.5 flex-shrink-0"
-              >
+              <Button size="sm" onClick={handleSave} disabled={saving || !isDirty} className="gap-1.5 flex-shrink-0">
                 <Save className="w-3.5 h-3.5" />
                 {saving ? t('common.loading') : t('common.save')}
               </Button>
@@ -218,8 +224,16 @@ export function NotesView({ boardId }: NotesViewProps) {
               placeholder={t('planning.noteContentPlaceholder')}
               className="flex-1 resize-none text-sm min-h-80 border-border/40 bg-muted/10 focus-visible:border-primary/50"
             />
-            <div className="text-xs text-muted-foreground/50 text-right">
-              {t('planning.noteUpdated')} {new Date(selectedNote.updatedAt).toLocaleString()}
+            <div className="flex items-center justify-between text-xs text-muted-foreground/50">
+              <div className="flex items-center gap-2">
+                {selectedNote.createdBy && (
+                  <>
+                    <span>par</span>
+                    <CreatorChip user={selectedNote.createdBy} />
+                  </>
+                )}
+              </div>
+              <span>{t('planning.noteUpdated')} {new Date(selectedNote.updatedAt).toLocaleString()}</span>
             </div>
           </>
         ) : (

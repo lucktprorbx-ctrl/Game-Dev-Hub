@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import {
   useGetBoard, useUpdateTask, useCreateTask, useDeleteTask,
   useCreateBoardColumn, useUpdateBoardColumn, useDeleteBoardColumn,
+  useListUsers,
   getGetBoardQueryKey,
 } from '@workspace/api-client-react';
 import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
@@ -13,8 +14,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Trash2, GripVertical, X, Pencil, Check } from 'lucide-react';
+import { Plus, Trash2, GripVertical, X, Pencil, Check, User } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
+import { getAvatarClasses, getSubroleClasses } from '@/lib/role-colors';
 
 interface KanbanBoardProps {
   boardId: number;
@@ -26,10 +28,44 @@ const PRIORITY_COLORS = {
   low: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
 };
 
+type UserInfo = {
+  id: number;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  role: string;
+  subroles: string[];
+} | null;
+
+function UserAvatar({ user, size = 'sm' }: { user: UserInfo; size?: 'sm' | 'md' }) {
+  if (!user) return null;
+  const sz = size === 'sm' ? 'w-5 h-5 text-[9px]' : 'w-7 h-7 text-xs';
+  const classes = getAvatarClasses(user.role, user.subroles);
+  if (user.avatarUrl) {
+    return (
+      <img
+        src={user.avatarUrl}
+        alt={user.username}
+        title={`@${user.username}`}
+        className={`${sz} rounded-full object-cover flex-shrink-0 ring-1 ring-border/50`}
+      />
+    );
+  }
+  return (
+    <div
+      title={`@${user.username}`}
+      className={`${sz} rounded-full flex items-center justify-center font-bold flex-shrink-0 ${classes}`}
+    >
+      {user.username.charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
 export function KanbanBoard({ boardId }: KanbanBoardProps) {
   const { data: board, isLoading: boardLoading } = useGetBoard(boardId, {
     query: { queryKey: getGetBoardQueryKey(boardId) }
   });
+  const { data: users } = useListUsers();
 
   const updateTask = useUpdateTask();
   const createTask = useCreateTask();
@@ -44,6 +80,7 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
   const [taskDesc, setTaskDesc] = useState('');
   const [taskPriority, setTaskPriority] = useState<'low' | 'medium' | 'high' | ''>('');
   const [taskTags, setTaskTags] = useState('');
+  const [taskAssigneeId, setTaskAssigneeId] = useState<string>('');
 
   const [addingCol, setAddingCol] = useState(false);
   const [newColName, setNewColName] = useState('');
@@ -52,36 +89,27 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
   const newColInputRef = useRef<HTMLInputElement>(null);
   const editColInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (addingCol) newColInputRef.current?.focus();
-  }, [addingCol]);
+  useEffect(() => { if (addingCol) newColInputRef.current?.focus(); }, [addingCol]);
+  useEffect(() => { if (editingColId !== null) editColInputRef.current?.focus(); }, [editingColId]);
 
-  useEffect(() => {
-    if (editingColId !== null) editColInputRef.current?.focus();
-  }, [editingColId]);
-
-  const invalidateBoard = () => {
-    queryClient.invalidateQueries({ queryKey: getGetBoardQueryKey(boardId) });
-  };
+  const invalidateBoard = () => queryClient.invalidateQueries({ queryKey: getGetBoardQueryKey(boardId) });
 
   const handleDragEnd = async (result: DropResult) => {
     if (!result.destination || !board) return;
-
     if (result.type === 'COLUMN') {
       const colId = parseInt(result.draggableId.replace('col-', ''), 10);
       await updateCol.mutateAsync({ id: colId, data: { position: result.destination.index } });
-      invalidateBoard();
     } else {
       const taskId = parseInt(result.draggableId, 10);
       const destColId = parseInt(result.destination.droppableId, 10);
       await updateTask.mutateAsync({ id: taskId, data: { columnId: destColId, position: result.destination.index } });
-      invalidateBoard();
     }
+    invalidateBoard();
   };
 
   const openTaskDialog = (columnId: number) => {
     setTaskDialog({ open: true, columnId });
-    setTaskTitle(''); setTaskDesc(''); setTaskPriority(''); setTaskTags('');
+    setTaskTitle(''); setTaskDesc(''); setTaskPriority(''); setTaskTags(''); setTaskAssigneeId('');
   };
 
   const handleCreateTask = async () => {
@@ -95,6 +123,7 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
         description: taskDesc || undefined,
         priority: taskPriority || undefined,
         tags,
+        assigneeId: taskAssigneeId ? parseInt(taskAssigneeId, 10) : undefined,
       }
     });
     invalidateBoard();
@@ -110,8 +139,7 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
     if (!newColName.trim()) { setAddingCol(false); return; }
     await createCol.mutateAsync({ boardId, data: { name: newColName.trim() } });
     invalidateBoard();
-    setNewColName('');
-    setAddingCol(false);
+    setNewColName(''); setAddingCol(false);
   };
 
   const handleDeleteColumn = async (id: number) => {
@@ -120,8 +148,7 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
   };
 
   const startEditCol = (id: number, currentName: string) => {
-    setEditingColId(id);
-    setEditingColName(currentName);
+    setEditingColId(id); setEditingColName(currentName);
   };
 
   const handleRenameColumn = async () => {
@@ -138,8 +165,7 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
           <div key={i} className="w-72 flex-shrink-0 bg-muted/20 rounded-lg p-4">
             <Skeleton className="h-6 w-32 mb-4" />
             <div className="space-y-3">
-              <Skeleton className="h-20 w-full" />
-              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" /><Skeleton className="h-20 w-full" />
             </div>
           </div>
         ))}
@@ -170,13 +196,9 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
                     >
                       {/* Column header */}
                       <div className="p-2.5 border-b border-border flex items-center gap-1.5 group/col">
-                        <span
-                          {...colProvided.dragHandleProps}
-                          className="text-muted-foreground/40 hover:text-muted-foreground cursor-grab active:cursor-grabbing flex-shrink-0"
-                        >
+                        <span {...colProvided.dragHandleProps} className="text-muted-foreground/40 hover:text-muted-foreground cursor-grab active:cursor-grabbing flex-shrink-0">
                           <GripVertical className="w-3.5 h-3.5" />
                         </span>
-
                         {editingColId === column.id ? (
                           <Input
                             ref={editColInputRef}
@@ -197,30 +219,17 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
                             {column.name}
                           </span>
                         )}
-
                         <Badge variant="secondary" className="text-xs flex-shrink-0">{column.tasks.length}</Badge>
-
                         {editingColId === column.id ? (
-                          <button
-                            onClick={handleRenameColumn}
-                            className="text-emerald-400 hover:text-emerald-300 flex-shrink-0"
-                          >
+                          <button onClick={handleRenameColumn} className="text-emerald-400 hover:text-emerald-300 flex-shrink-0">
                             <Check className="w-3.5 h-3.5" />
                           </button>
                         ) : (
-                          <button
-                            onClick={() => startEditCol(column.id, column.name)}
-                            className="opacity-0 group-hover/col:opacity-100 transition-opacity text-muted-foreground hover:text-foreground flex-shrink-0"
-                          >
+                          <button onClick={() => startEditCol(column.id, column.name)} className="opacity-0 group-hover/col:opacity-100 transition-opacity text-muted-foreground hover:text-foreground flex-shrink-0">
                             <Pencil className="w-3 h-3" />
                           </button>
                         )}
-
-                        <button
-                          onClick={() => handleDeleteColumn(column.id)}
-                          className="opacity-0 group-hover/col:opacity-100 transition-opacity text-muted-foreground hover:text-destructive flex-shrink-0"
-                          title="Delete column"
-                        >
+                        <button onClick={() => handleDeleteColumn(column.id)} className="opacity-0 group-hover/col:opacity-100 transition-opacity text-muted-foreground hover:text-destructive flex-shrink-0">
                           <X className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -233,54 +242,84 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
                             {...provided.droppableProps}
                             className={`p-2 flex-1 space-y-2 min-h-[80px] transition-colors ${snapshot.isDraggingOver ? 'bg-primary/5' : ''}`}
                           >
-                            {[...column.tasks].sort((a, b) => a.position - b.position).map((task, index) => (
-                              <Draggable key={task.id} draggableId={task.id.toString()} index={index}>
-                                {(provided, snapshot) => (
-                                  <Card
-                                    ref={provided.innerRef}
-                                    {...provided.draggableProps}
-                                    {...provided.dragHandleProps}
-                                    className={`cursor-grab active:cursor-grabbing group transition-shadow ${
-                                      snapshot.isDragging ? 'ring-1 ring-primary shadow-lg shadow-primary/10 scale-[1.02]' : 'hover:border-border/80'
-                                    }`}
-                                  >
-                                    <CardContent className="p-3">
-                                      <div className="flex justify-between items-start gap-2 mb-1">
-                                        <span className="font-medium text-sm leading-snug flex-1">{task.title}</span>
-                                        <button
-                                          onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }}
-                                          className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive flex-shrink-0"
-                                        >
-                                          <Trash2 className="w-3 h-3" />
-                                        </button>
-                                      </div>
-                                      {task.description && (
-                                        <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{task.description}</p>
-                                      )}
-                                      {task.tags && task.tags.length > 0 && (
-                                        <div className="flex gap-1 flex-wrap mb-2">
-                                          {task.tags.map(tag => (
-                                            <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-border/50">{tag}</Badge>
-                                          ))}
+                            {[...column.tasks].sort((a, b) => a.position - b.position).map((task, index) => {
+                              const assignee = (task as any).assignee as UserInfo;
+                              const createdBy = (task as any).createdBy as UserInfo;
+                              return (
+                                <Draggable key={task.id} draggableId={task.id.toString()} index={index}>
+                                  {(provided, snapshot) => (
+                                    <Card
+                                      ref={provided.innerRef}
+                                      {...provided.draggableProps}
+                                      {...provided.dragHandleProps}
+                                      className={`cursor-grab active:cursor-grabbing group transition-shadow ${snapshot.isDragging ? 'ring-1 ring-primary shadow-lg shadow-primary/10 scale-[1.02]' : 'hover:border-border/80'}`}
+                                    >
+                                      <CardContent className="p-3">
+                                        <div className="flex justify-between items-start gap-2 mb-1">
+                                          <span className="font-medium text-sm leading-snug flex-1">{task.title}</span>
+                                          <button
+                                            onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }}
+                                            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive flex-shrink-0"
+                                          >
+                                            <Trash2 className="w-3 h-3" />
+                                          </button>
                                         </div>
-                                      )}
-                                      <div className="flex justify-between items-center">
-                                        {task.priority ? (
-                                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium uppercase ${PRIORITY_COLORS[task.priority]}`}>
-                                            {task.priority}
-                                          </span>
-                                        ) : <span />}
-                                        {task.assigneeUsername && (
-                                          <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[9px] font-bold text-primary">
-                                            {task.assigneeUsername.charAt(0).toUpperCase()}
+                                        {task.description && (
+                                          <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{task.description}</p>
+                                        )}
+                                        {task.tags && task.tags.length > 0 && (
+                                          <div className="flex gap-1 flex-wrap mb-2">
+                                            {task.tags.map(tag => (
+                                              <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-border/50">{tag}</Badge>
+                                            ))}
                                           </div>
                                         )}
-                                      </div>
-                                    </CardContent>
-                                  </Card>
-                                )}
-                              </Draggable>
-                            ))}
+                                        <div className="flex justify-between items-center mt-1">
+                                          <div className="flex items-center gap-1.5">
+                                            {task.priority && (
+                                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium uppercase ${PRIORITY_COLORS[task.priority]}`}>
+                                                {task.priority}
+                                              </span>
+                                            )}
+                                          </div>
+                                          <div className="flex items-center gap-1">
+                                            {/* Creator badge (small) */}
+                                            {createdBy && (
+                                              <div title={`Created by @${createdBy.username}`} className="flex items-center gap-0.5">
+                                                <UserAvatar user={createdBy} size="sm" />
+                                              </div>
+                                            )}
+                                            {/* Assignee badge — highlighted if different from creator */}
+                                            {assignee && assignee?.id !== createdBy?.id && (
+                                              <div
+                                                className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getAvatarClasses(assignee.role, assignee.subroles)}`}
+                                                title={`Assigned to @${assignee.username}`}
+                                              >
+                                                {assignee.avatarUrl ? (
+                                                  <img src={assignee.avatarUrl} alt="" className="w-3 h-3 rounded-full" />
+                                                ) : null}
+                                                <span>{assignee.displayName || assignee.username}</span>
+                                              </div>
+                                            )}
+                                            {assignee && assignee?.id === createdBy?.id && (
+                                              <div
+                                                className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getAvatarClasses(assignee.role, assignee.subroles)}`}
+                                                title={`Assigned to @${assignee.username}`}
+                                              >
+                                                {assignee.avatarUrl ? (
+                                                  <img src={assignee.avatarUrl} alt="" className="w-3 h-3 rounded-full" />
+                                                ) : null}
+                                                <span>{assignee.displayName || assignee.username}</span>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </CardContent>
+                                    </Card>
+                                  )}
+                                </Draggable>
+                              );
+                            })}
                             {provided.placeholder}
                           </div>
                         )}
@@ -317,12 +356,8 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
                       className="h-8 text-sm"
                     />
                     <div className="flex gap-2">
-                      <Button size="sm" className="flex-1 h-7 text-xs" onClick={handleAddColumn} disabled={createCol.isPending}>
-                        Add
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setAddingCol(false); setNewColName(''); }}>
-                        Cancel
-                      </Button>
+                      <Button size="sm" className="flex-1 h-7 text-xs" onClick={handleAddColumn} disabled={createCol.isPending}>Add</Button>
+                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setAddingCol(false); setNewColName(''); }}>Cancel</Button>
                     </div>
                   </div>
                 ) : (
@@ -348,24 +383,59 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
           <div className="space-y-3 pt-1">
             <div>
               <label className="text-sm font-medium mb-1.5 block">Title <span className="text-destructive">*</span></label>
-              <Input
-                placeholder="Task title"
-                value={taskTitle}
-                onChange={e => setTaskTitle(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleCreateTask()}
-                autoFocus
-              />
+              <Input placeholder="Task title" value={taskTitle} onChange={e => setTaskTitle(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateTask()} autoFocus />
             </div>
             <div>
               <label className="text-sm font-medium mb-1.5 block">Description</label>
               <Textarea placeholder="Optional description..." value={taskDesc} onChange={e => setTaskDesc(e.target.value)} className="resize-none h-20 text-sm" />
             </div>
             <div>
+              <label className="text-sm font-medium mb-1.5 block">Assigned to</label>
+              <Select value={taskAssigneeId} onValueChange={setTaskAssigneeId}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Unassigned">
+                    {taskAssigneeId ? (() => {
+                      const u = users?.find(u => u.id === parseInt(taskAssigneeId, 10));
+                      if (!u) return 'Unassigned';
+                      return (
+                        <div className="flex items-center gap-2">
+                          {u.robloxAvatarUrl
+                            ? <img src={u.robloxAvatarUrl} alt="" className="w-4 h-4 rounded-full" />
+                            : <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold ${getAvatarClasses(u.role, u.subroles ?? [])}`}>{u.robloxUsername.charAt(0)}</div>
+                          }
+                          <span>{u.robloxDisplayName || u.robloxUsername}</span>
+                        </div>
+                      );
+                    })() : null}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <User className="w-3.5 h-3.5" /> Unassigned
+                    </div>
+                  </SelectItem>
+                  {users?.map(u => (
+                    <SelectItem key={u.id} value={u.id.toString()}>
+                      <div className="flex items-center gap-2">
+                        {u.robloxAvatarUrl
+                          ? <img src={u.robloxAvatarUrl} alt="" className="w-4 h-4 rounded-full" />
+                          : <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold ${getAvatarClasses(u.role, u.subroles ?? [])}`}>{u.robloxUsername.charAt(0)}</div>
+                        }
+                        <span>{u.robloxDisplayName || u.robloxUsername}</span>
+                        {u.subroles?.[0] && (
+                          <span className={`text-[10px] px-1.5 py-0 rounded-full ${getSubroleClasses(u.subroles[0])}`}>{u.subroles[0]}</span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <label className="text-sm font-medium mb-1.5 block">Priority</label>
               <Select value={taskPriority} onValueChange={(v: any) => setTaskPriority(v)}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
+                <SelectTrigger className="h-9"><SelectValue placeholder="None" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="low">Low</SelectItem>
                   <SelectItem value="medium">Medium</SelectItem>

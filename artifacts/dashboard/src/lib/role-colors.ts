@@ -29,3 +29,22 @@ export function getSubroleClasses(sr: string): string {
 export function getSubroleDot(sr: string): string {
   return SUBROLE_DOT_COLORS[sr] ?? 'bg-blue-400';
 }
+
+export const SUBROLE_AVATAR_COLORS: Record<string, string> = {
+  Scripter: 'bg-violet-500/20 text-violet-400',
+  Investor: 'bg-emerald-500/20 text-emerald-400',
+  Investisseur: 'bg-emerald-500/20 text-emerald-400',
+  'UI Maker': 'bg-cyan-500/20 text-cyan-400',
+  Builder: 'bg-orange-500/20 text-orange-400',
+  Modeler: 'bg-pink-500/20 text-pink-400',
+  Animator: 'bg-yellow-500/20 text-yellow-400',
+  'Sound Designer': 'bg-teal-500/20 text-teal-400',
+  'Game Designer': 'bg-indigo-500/20 text-indigo-400',
+};
+
+export function getAvatarClasses(role: string, subroles: string[]): string {
+  if (role === 'admin') return 'bg-red-500/20 text-red-400';
+  const sr = subroles?.[0];
+  if (sr) return SUBROLE_AVATAR_COLORS[sr] ?? 'bg-blue-500/20 text-blue-400';
+  return 'bg-blue-500/20 text-blue-400';
+}

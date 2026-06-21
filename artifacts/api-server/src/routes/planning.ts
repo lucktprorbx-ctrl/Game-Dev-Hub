@@ -28,26 +28,74 @@ function parseIntParam(val: unknown): number | null {
 
 const router: IRouter = Router();
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+type DbUser = typeof usersTable.$inferSelect;
+
+function serializeUserInfo(u: DbUser | null | undefined) {
+  if (!u) return null;
+  return {
+    id: u.id,
+    username: u.robloxUsername,
+    displayName: u.robloxDisplayName,
+    avatarUrl: u.robloxAvatarUrl,
+    role: u.role,
+    subroles: u.subroles ?? [],
+  };
+}
+
 function serializeBoard(b: typeof boardsTable.$inferSelect) {
   return { ...b, createdAt: b.createdAt.toISOString() };
 }
 
-function serializeTask(t: typeof tasksTable.$inferSelect, assigneeUsername?: string | null) {
+function serializeTask(
+  t: typeof tasksTable.$inferSelect,
+  assignee?: DbUser | null,
+  createdBy?: DbUser | null,
+) {
   return {
     ...t,
-    assigneeUsername: assigneeUsername ?? null,
+    assigneeUsername: assignee?.robloxUsername ?? null,
+    assignee: serializeUserInfo(assignee),
+    createdBy: serializeUserInfo(createdBy),
     createdAt: t.createdAt.toISOString(),
   };
 }
 
-function serializeEvent(e: typeof calendarEventsTable.$inferSelect) {
+function serializeEvent(
+  e: typeof calendarEventsTable.$inferSelect,
+  assignee?: DbUser | null,
+  createdBy?: DbUser | null,
+) {
   return {
     ...e,
+    assignee: serializeUserInfo(assignee),
+    createdBy: serializeUserInfo(createdBy),
     startDate: e.startDate.toISOString(),
     endDate: e.endDate ? e.endDate.toISOString() : null,
     createdAt: e.createdAt.toISOString(),
   };
 }
+
+function serializeNote(
+  n: typeof boardNotesTable.$inferSelect,
+  createdBy?: DbUser | null,
+) {
+  return {
+    ...n,
+    createdBy: serializeUserInfo(createdBy),
+    createdAt: n.createdAt.toISOString(),
+    updatedAt: n.updatedAt.toISOString(),
+  };
+}
+
+// Fetch all users once and build a map for lookups
+async function getUserMap(): Promise<Map<number, DbUser>> {
+  const users = await db.select().from(usersTable);
+  return new Map(users.map((u) => [u.id, u]));
+}
+
+// ── Boards ────────────────────────────────────────────────────────────────────
 
 router.get("/planning/boards", requireAuth, async (_req, res): Promise<void> => {
   const boards = await db.select().from(boardsTable).orderBy(boardsTable.createdAt);
@@ -56,91 +104,67 @@ router.get("/planning/boards", requireAuth, async (_req, res): Promise<void> => 
 
 router.post("/planning/boards", requireAuth, async (req, res): Promise<void> => {
   const parsed = CreateBoardBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
-  const [board] = await db.insert(boardsTable).values(parsed.data).returning();
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
+  const [board] = await db.insert(boardsTable).values(parsed.data).returning();
   await db.insert(boardColumnsTable).values([
     { boardId: board.id, name: "To Do", position: 0 },
     { boardId: board.id, name: "In Progress", position: 1 },
     { boardId: board.id, name: "Done", position: 2 },
   ]);
-
   res.status(201).json(serializeBoard(board));
 });
 
 router.get("/planning/boards/:id", requireAuth, async (req, res): Promise<void> => {
   const params = GetBoardParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+
   const [board] = await db.select().from(boardsTable).where(eq(boardsTable.id, params.data.id));
-  if (!board) {
-    res.status(404).json({ error: "Board not found" });
-    return;
-  }
+  if (!board) { res.status(404).json({ error: "Board not found" }); return; }
 
   const columns = await db.select().from(boardColumnsTable)
     .where(eq(boardColumnsTable.boardId, board.id))
     .orderBy(boardColumnsTable.position);
 
   const tasks = await db.select().from(tasksTable).where(eq(tasksTable.boardId, board.id));
-  const users = await db.select().from(usersTable);
+  const userMap = await getUserMap();
 
-  const columnsWithTasks = columns.map(col => ({
+  const columnsWithTasks = columns.map((col) => ({
     ...col,
     tasks: tasks
-      .filter(t => t.columnId === col.id)
+      .filter((t) => t.columnId === col.id)
       .sort((a, b) => a.position - b.position)
-      .map(t => {
-        const assignee = users.find(u => u.id === t.assigneeId);
-        return serializeTask(t, assignee?.robloxUsername);
-      }),
+      .map((t) => serializeTask(
+        t,
+        t.assigneeId ? userMap.get(t.assigneeId) : null,
+        t.createdById ? userMap.get(t.createdById) : null,
+      )),
   }));
 
-  res.json({
-    ...serializeBoard(board),
-    columns: columnsWithTasks,
-  });
+  res.json({ ...serializeBoard(board), columns: columnsWithTasks });
 });
 
 router.patch("/planning/boards/:id", requireAuth, async (req, res): Promise<void> => {
   const params = UpdateBoardParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   const parsed = UpdateBoardBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+
   const [board] = await db.update(boardsTable).set(parsed.data).where(eq(boardsTable.id, params.data.id)).returning();
-  if (!board) {
-    res.status(404).json({ error: "Board not found" });
-    return;
-  }
+  if (!board) { res.status(404).json({ error: "Board not found" }); return; }
   res.json(serializeBoard(board));
 });
 
 router.delete("/planning/boards/:id", requireAuth, async (req, res): Promise<void> => {
   const params = DeleteBoardParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+
   const [board] = await db.delete(boardsTable).where(eq(boardsTable.id, params.data.id)).returning();
-  if (!board) {
-    res.status(404).json({ error: "Board not found" });
-    return;
-  }
+  if (!board) { res.status(404).json({ error: "Board not found" }); return; }
   res.sendStatus(204);
 });
 
-// ── Column CRUD ──────────────────────────────────────────────────────────────
+// ── Columns ───────────────────────────────────────────────────────────────────
 
 router.post("/planning/boards/:boardId/columns", requireAuth, async (req, res): Promise<void> => {
   const boardId = parseIntParam(req.params["boardId"]);
@@ -155,7 +179,6 @@ router.post("/planning/boards/:boardId/columns", requireAuth, async (req, res): 
     const cols = await db.select().from(boardColumnsTable).where(eq(boardColumnsTable.boardId, boardId));
     position = cols.length;
   }
-
   const [col] = await db.insert(boardColumnsTable).values({ boardId, name: name.trim(), position }).returning();
   res.status(201).json(col);
 });
@@ -177,7 +200,6 @@ router.patch("/planning/columns/:id", requireAuth, async (req, res): Promise<voi
 router.delete("/planning/columns/:id", requireAuth, async (req, res): Promise<void> => {
   const id = parseIntParam(req.params["id"]);
   if (!id) { res.status(400).json({ error: "Invalid id" }); return; }
-
   const [col] = await db.delete(boardColumnsTable).where(eq(boardColumnsTable.id, id)).returning();
   if (!col) { res.status(404).json({ error: "Column not found" }); return; }
   res.sendStatus(204);
@@ -187,88 +209,76 @@ router.delete("/planning/columns/:id", requireAuth, async (req, res): Promise<vo
 
 router.get("/planning/tasks", requireAuth, async (req, res): Promise<void> => {
   const query = ListTasksQueryParams.safeParse(req.query);
-  if (!query.success) {
-    res.status(400).json({ error: query.error.message });
-    return;
-  }
+  if (!query.success) { res.status(400).json({ error: query.error.message }); return; }
 
-  let tasks;
-  if (query.data.boardId != null) {
-    tasks = await db.select().from(tasksTable).where(eq(tasksTable.boardId, query.data.boardId));
-  } else {
-    tasks = await db.select().from(tasksTable);
-  }
+  const tasks = query.data.boardId != null
+    ? await db.select().from(tasksTable).where(eq(tasksTable.boardId, query.data.boardId))
+    : await db.select().from(tasksTable);
 
-  const users = await db.select().from(usersTable);
-  res.json(tasks.map(t => {
-    const assignee = users.find(u => u.id === t.assigneeId);
-    return serializeTask(t, assignee?.robloxUsername);
-  }));
+  const userMap = await getUserMap();
+  res.json(tasks.map((t) => serializeTask(
+    t,
+    t.assigneeId ? userMap.get(t.assigneeId) : null,
+    t.createdById ? userMap.get(t.createdById) : null,
+  )));
 });
 
 router.post("/planning/tasks", requireAuth, async (req, res): Promise<void> => {
   const parsed = CreateTaskBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+
   const [task] = await db.insert(tasksTable).values({
     ...parsed.data,
     tags: parsed.data.tags ?? [],
+    createdById: req.user!.id,
   }).returning();
-  res.status(201).json(serializeTask(task, null));
+
+  const userMap = await getUserMap();
+  res.status(201).json(serializeTask(
+    task,
+    task.assigneeId ? userMap.get(task.assigneeId) : null,
+    userMap.get(req.user!.id),
+  ));
 });
 
 router.get("/planning/tasks/:id", requireAuth, async (req, res): Promise<void> => {
   const params = GetTaskParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+
   const [task] = await db.select().from(tasksTable).where(eq(tasksTable.id, params.data.id));
-  if (!task) {
-    res.status(404).json({ error: "Task not found" });
-    return;
-  }
-  const [assignee] = task.assigneeId
-    ? await db.select().from(usersTable).where(eq(usersTable.id, task.assigneeId))
-    : [null];
-  res.json(serializeTask(task, assignee?.robloxUsername));
+  if (!task) { res.status(404).json({ error: "Task not found" }); return; }
+
+  const userMap = await getUserMap();
+  res.json(serializeTask(
+    task,
+    task.assigneeId ? userMap.get(task.assigneeId) : null,
+    task.createdById ? userMap.get(task.createdById) : null,
+  ));
 });
 
 router.patch("/planning/tasks/:id", requireAuth, async (req, res): Promise<void> => {
   const params = UpdateTaskParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   const parsed = UpdateTaskBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+
   const [task] = await db.update(tasksTable).set(parsed.data).where(eq(tasksTable.id, params.data.id)).returning();
-  if (!task) {
-    res.status(404).json({ error: "Task not found" });
-    return;
-  }
-  const [assignee] = task.assigneeId
-    ? await db.select().from(usersTable).where(eq(usersTable.id, task.assigneeId))
-    : [null];
-  res.json(serializeTask(task, assignee?.robloxUsername));
+  if (!task) { res.status(404).json({ error: "Task not found" }); return; }
+
+  const userMap = await getUserMap();
+  res.json(serializeTask(
+    task,
+    task.assigneeId ? userMap.get(task.assigneeId) : null,
+    task.createdById ? userMap.get(task.createdById) : null,
+  ));
 });
 
 router.delete("/planning/tasks/:id", requireAuth, async (req, res): Promise<void> => {
   const params = DeleteTaskParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+
   const [task] = await db.delete(tasksTable).where(eq(tasksTable.id, params.data.id)).returning();
-  if (!task) {
-    res.status(404).json({ error: "Task not found" });
-    return;
-  }
+  if (!task) { res.status(404).json({ error: "Task not found" }); return; }
   res.sendStatus(204);
 });
 
@@ -277,14 +287,13 @@ router.delete("/planning/tasks/:id", requireAuth, async (req, res): Promise<void
 router.get("/planning/boards/:boardId/notes", requireAuth, async (req, res): Promise<void> => {
   const boardId = parseIntParam(req.params["boardId"]);
   if (!boardId) { res.status(400).json({ error: "Invalid boardId" }); return; }
+
   const notes = await db.select().from(boardNotesTable)
     .where(eq(boardNotesTable.boardId, boardId))
     .orderBy(boardNotesTable.createdAt);
-  res.json(notes.map(n => ({
-    ...n,
-    createdAt: n.createdAt.toISOString(),
-    updatedAt: n.updatedAt.toISOString(),
-  })));
+
+  const userMap = await getUserMap();
+  res.json(notes.map((n) => serializeNote(n, n.createdById ? userMap.get(n.createdById) : null)));
 });
 
 router.post("/planning/boards/:boardId/notes", requireAuth, async (req, res): Promise<void> => {
@@ -292,12 +301,16 @@ router.post("/planning/boards/:boardId/notes", requireAuth, async (req, res): Pr
   if (!boardId) { res.status(400).json({ error: "Invalid boardId" }); return; }
   const { title, content } = req.body as { title?: unknown; content?: unknown };
   if (typeof title !== "string" || !title.trim()) { res.status(400).json({ error: "title is required" }); return; }
+
   const [note] = await db.insert(boardNotesTable).values({
     boardId,
+    createdById: req.user!.id,
     title: title.trim(),
     content: typeof content === "string" ? content : "",
   }).returning();
-  res.status(201).json({ ...note, createdAt: note.createdAt.toISOString(), updatedAt: note.updatedAt.toISOString() });
+
+  const userMap = await getUserMap();
+  res.status(201).json(serializeNote(note, userMap.get(req.user!.id)));
 });
 
 router.patch("/planning/notes/:id", requireAuth, async (req, res): Promise<void> => {
@@ -307,9 +320,12 @@ router.patch("/planning/notes/:id", requireAuth, async (req, res): Promise<void>
   const update: Record<string, unknown> = { updatedAt: new Date() };
   if (typeof title === "string" && title.trim()) update["title"] = title.trim();
   if (typeof content === "string") update["content"] = content;
+
   const [note] = await db.update(boardNotesTable).set(update as any).where(eq(boardNotesTable.id, id)).returning();
   if (!note) { res.status(404).json({ error: "Note not found" }); return; }
-  res.json({ ...note, createdAt: note.createdAt.toISOString(), updatedAt: note.updatedAt.toISOString() });
+
+  const userMap = await getUserMap();
+  res.json(serializeNote(note, note.createdById ? userMap.get(note.createdById) : null));
 });
 
 router.delete("/planning/notes/:id", requireAuth, async (req, res): Promise<void> => {
@@ -320,37 +336,43 @@ router.delete("/planning/notes/:id", requireAuth, async (req, res): Promise<void
   res.sendStatus(204);
 });
 
+// ── Calendar Events ───────────────────────────────────────────────────────────
+
 router.get("/planning/events", requireAuth, async (req, res): Promise<void> => {
   const events = await db.select().from(calendarEventsTable).orderBy(calendarEventsTable.startDate);
-  res.json(events.map(serializeEvent));
+  const userMap = await getUserMap();
+  res.json(events.map((e) => serializeEvent(
+    e,
+    e.assigneeId ? userMap.get(e.assigneeId) : null,
+    e.createdById ? userMap.get(e.createdById) : null,
+  )));
 });
 
 router.post("/planning/events", requireAuth, async (req, res): Promise<void> => {
   const parsed = CreateEventBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+
   const [event] = await db.insert(calendarEventsTable).values({
     ...parsed.data,
+    createdById: req.user!.id,
     startDate: new Date(parsed.data.startDate),
     endDate: parsed.data.endDate ? new Date(parsed.data.endDate) : null,
     allDay: parsed.data.allDay ?? false,
   }).returning();
-  res.status(201).json(serializeEvent(event));
+
+  const userMap = await getUserMap();
+  res.status(201).json(serializeEvent(
+    event,
+    event.assigneeId ? userMap.get(event.assigneeId) : null,
+    userMap.get(req.user!.id),
+  ));
 });
 
 router.patch("/planning/events/:id", requireAuth, async (req, res): Promise<void> => {
   const params = UpdateEventParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
   const parsed = UpdateEventBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
   const updateData: Record<string, unknown> = { ...parsed.data };
   if (parsed.data.startDate) updateData.startDate = new Date(parsed.data.startDate);
@@ -358,24 +380,22 @@ router.patch("/planning/events/:id", requireAuth, async (req, res): Promise<void
   if (parsed.data.endDate === null) updateData.endDate = null;
 
   const [event] = await db.update(calendarEventsTable).set(updateData as any).where(eq(calendarEventsTable.id, params.data.id)).returning();
-  if (!event) {
-    res.status(404).json({ error: "Event not found" });
-    return;
-  }
-  res.json(serializeEvent(event));
+  if (!event) { res.status(404).json({ error: "Event not found" }); return; }
+
+  const userMap = await getUserMap();
+  res.json(serializeEvent(
+    event,
+    event.assigneeId ? userMap.get(event.assigneeId) : null,
+    event.createdById ? userMap.get(event.createdById) : null,
+  ));
 });
 
 router.delete("/planning/events/:id", requireAuth, async (req, res): Promise<void> => {
   const params = DeleteEventParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
+  if (!params.success) { res.status(400).json({ error: params.error.message }); return; }
+
   const [event] = await db.delete(calendarEventsTable).where(eq(calendarEventsTable.id, params.data.id)).returning();
-  if (!event) {
-    res.status(404).json({ error: "Event not found" });
-    return;
-  }
+  if (!event) { res.status(404).json({ error: "Event not found" }); return; }
   res.sendStatus(204);
 });
 

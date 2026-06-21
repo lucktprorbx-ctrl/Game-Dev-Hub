@@ -35,6 +35,7 @@ export const tasksTable = pgTable("tasks", {
   title: text("title").notNull(),
   description: text("description"),
   assigneeId: integer("assignee_id").references(() => usersTable.id, { onDelete: "set null" }),
+  createdById: integer("created_by_id").references(() => usersTable.id, { onDelete: "set null" }),
   priority: priorityEnum("priority"),
   dueDate: text("due_date"),
   position: integer("position").notNull().default(0),
@@ -54,6 +55,7 @@ export const calendarEventsTable = pgTable("calendar_events", {
   endDate: timestamp("end_date"),
   color: text("color"),
   assigneeId: integer("assignee_id").references(() => usersTable.id, { onDelete: "set null" }),
+  createdById: integer("created_by_id").references(() => usersTable.id, { onDelete: "set null" }),
   allDay: boolean("all_day").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -65,6 +67,7 @@ export type CalendarEvent = typeof calendarEventsTable.$inferSelect;
 export const boardNotesTable = pgTable("board_notes", {
   id: serial("id").primaryKey(),
   boardId: integer("board_id").notNull().references(() => boardsTable.id, { onDelete: "cascade" }),
+  createdById: integer("created_by_id").references(() => usersTable.id, { onDelete: "set null" }),
   title: text("title").notNull(),
   content: text("content").notNull().default(""),
   createdAt: timestamp("created_at").defaultNow().notNull(),
