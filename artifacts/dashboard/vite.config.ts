@@ -63,9 +63,17 @@ export default defineConfig({
     strictPort: true,
     host: "0.0.0.0",
     allowedHosts: true,
-    fs: {
-      strict: true,
-    },
+    fs: { strict: true },
+    // Local dev only: proxy /api to the API server (Replit handles this at infra level)
+    ...(process.env.REPL_ID === undefined && {
+      proxy: {
+        "/api": {
+          target: `http://localhost:${process.env.API_PORT ?? "8080"}`,
+          changeOrigin: true,
+          secure: false,
+        },
+      },
+    }),
   },
   preview: {
     port,

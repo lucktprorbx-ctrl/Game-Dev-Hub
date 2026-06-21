@@ -13,10 +13,12 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Trash2, GripVertical, X, Pencil, Check, User } from 'lucide-react';
+import { Plus, Trash2, GripVertical, X, Pencil, Check, User, UserCog } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { getAvatarClasses, getSubroleClasses } from '@/lib/role-colors';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface KanbanBoardProps {
   boardId: number;
@@ -61,6 +63,12 @@ function UserAvatar({ user, size = 'sm' }: { user: UserInfo; size?: 'sm' | 'md' 
   );
 }
 
+const cardVariants = {
+  hidden: { opacity: 0, y: 8, scale: 0.97 },
+  show: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 300, damping: 24 } },
+  exit: { opacity: 0, y: -4, scale: 0.97, transition: { duration: 0.15 } },
+};
+
 export function KanbanBoard({ boardId }: KanbanBoardProps) {
   const { data: board, isLoading: boardLoading } = useGetBoard(boardId, {
     query: { queryKey: getGetBoardQueryKey(boardId) }
@@ -86,6 +94,7 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
   const [newColName, setNewColName] = useState('');
   const [editingColId, setEditingColId] = useState<number | null>(null);
   const [editingColName, setEditingColName] = useState('');
+  const [assigneePopoverTaskId, setAssigneePopoverTaskId] = useState<number | null>(null);
   const newColInputRef = useRef<HTMLInputElement>(null);
   const editColInputRef = useRef<HTMLInputElement>(null);
 
@@ -133,6 +142,12 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
   const handleDeleteTask = async (id: number) => {
     await deleteTask.mutateAsync({ id });
     invalidateBoard();
+  };
+
+  const handleChangeAssignee = async (taskId: number, userId: number | null) => {
+    await updateTask.mutateAsync({ id: taskId, data: { assigneeId: userId ?? undefined } });
+    invalidateBoard();
+    setAssigneePopoverTaskId(null);
   };
 
   const handleAddColumn = async () => {
@@ -242,84 +257,152 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
                             {...provided.droppableProps}
                             className={`p-2 flex-1 space-y-2 min-h-[80px] transition-colors ${snapshot.isDraggingOver ? 'bg-primary/5' : ''}`}
                           >
-                            {[...column.tasks].sort((a, b) => a.position - b.position).map((task, index) => {
-                              const assignee = (task as any).assignee as UserInfo;
-                              const createdBy = (task as any).createdBy as UserInfo;
-                              return (
-                                <Draggable key={task.id} draggableId={task.id.toString()} index={index}>
-                                  {(provided, snapshot) => (
-                                    <Card
-                                      ref={provided.innerRef}
-                                      {...provided.draggableProps}
-                                      {...provided.dragHandleProps}
-                                      className={`cursor-grab active:cursor-grabbing group transition-shadow ${snapshot.isDragging ? 'ring-1 ring-primary shadow-lg shadow-primary/10 scale-[1.02]' : 'hover:border-border/80'}`}
-                                    >
-                                      <CardContent className="p-3">
-                                        <div className="flex justify-between items-start gap-2 mb-1">
-                                          <span className="font-medium text-sm leading-snug flex-1">{task.title}</span>
-                                          <button
-                                            onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }}
-                                            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive flex-shrink-0"
-                                          >
-                                            <Trash2 className="w-3 h-3" />
-                                          </button>
-                                        </div>
-                                        {task.description && (
-                                          <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{task.description}</p>
-                                        )}
-                                        {task.tags && task.tags.length > 0 && (
-                                          <div className="flex gap-1 flex-wrap mb-2">
-                                            {task.tags.map(tag => (
-                                              <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-border/50">{tag}</Badge>
-                                            ))}
-                                          </div>
-                                        )}
-                                        <div className="flex justify-between items-center mt-1">
-                                          <div className="flex items-center gap-1.5">
-                                            {task.priority && (
-                                              <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium uppercase ${PRIORITY_COLORS[task.priority]}`}>
-                                                {task.priority}
-                                              </span>
-                                            )}
-                                          </div>
-                                          <div className="flex items-center gap-1">
-                                            {/* Creator badge (small) */}
-                                            {createdBy && (
-                                              <div title={`Created by @${createdBy.username}`} className="flex items-center gap-0.5">
-                                                <UserAvatar user={createdBy} size="sm" />
-                                              </div>
-                                            )}
-                                            {/* Assignee badge — highlighted if different from creator */}
-                                            {assignee && assignee?.id !== createdBy?.id && (
-                                              <div
-                                                className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getAvatarClasses(assignee.role, assignee.subroles)}`}
-                                                title={`Assigned to @${assignee.username}`}
+                            <AnimatePresence initial={false}>
+                              {[...column.tasks].sort((a, b) => a.position - b.position).map((task, index) => {
+                                const assignee = (task as any).assignee as UserInfo;
+                                const createdBy = (task as any).createdBy as UserInfo;
+                                return (
+                                  <Draggable key={task.id} draggableId={task.id.toString()} index={index}>
+                                    {(provided, snapshot) => (
+                                      <motion.div
+                                        ref={provided.innerRef}
+                                        {...provided.draggableProps}
+                                        {...provided.dragHandleProps}
+                                        variants={cardVariants}
+                                        initial="hidden"
+                                        animate="show"
+                                        exit="exit"
+                                        whileHover={!snapshot.isDragging ? { y: -2, transition: { duration: 0.15 } } : undefined}
+                                        layout
+                                      >
+                                        <Card
+                                          className={`cursor-grab active:cursor-grabbing group transition-all ${snapshot.isDragging ? 'ring-1 ring-primary shadow-lg shadow-primary/10 scale-[1.02]' : 'hover:border-border/80 hover:shadow-md hover:shadow-black/20'}`}
+                                        >
+                                          <CardContent className="p-3">
+                                            <div className="flex justify-between items-start gap-2 mb-1">
+                                              <span className="font-medium text-sm leading-snug flex-1">{task.title}</span>
+                                              <button
+                                                onClick={(e) => { e.stopPropagation(); handleDeleteTask(task.id); }}
+                                                className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive flex-shrink-0"
                                               >
-                                                {assignee.avatarUrl ? (
-                                                  <img src={assignee.avatarUrl} alt="" className="w-3 h-3 rounded-full" />
-                                                ) : null}
-                                                <span>{assignee.displayName || assignee.username}</span>
+                                                <Trash2 className="w-3 h-3" />
+                                              </button>
+                                            </div>
+                                            {task.description && (
+                                              <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{task.description}</p>
+                                            )}
+                                            {task.tags && task.tags.length > 0 && (
+                                              <div className="flex gap-1 flex-wrap mb-2">
+                                                {task.tags.map(tag => (
+                                                  <Badge key={tag} variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-border/50">{tag}</Badge>
+                                                ))}
                                               </div>
                                             )}
-                                            {assignee && assignee?.id === createdBy?.id && (
-                                              <div
-                                                className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getAvatarClasses(assignee.role, assignee.subroles)}`}
-                                                title={`Assigned to @${assignee.username}`}
-                                              >
-                                                {assignee.avatarUrl ? (
-                                                  <img src={assignee.avatarUrl} alt="" className="w-3 h-3 rounded-full" />
-                                                ) : null}
-                                                <span>{assignee.displayName || assignee.username}</span>
+                                            <div className="flex justify-between items-center mt-1">
+                                              <div className="flex items-center gap-1.5">
+                                                {task.priority && (
+                                                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium uppercase ${PRIORITY_COLORS[task.priority]}`}>
+                                                    {task.priority}
+                                                  </span>
+                                                )}
                                               </div>
-                                            )}
-                                          </div>
-                                        </div>
-                                      </CardContent>
-                                    </Card>
-                                  )}
-                                </Draggable>
-                              );
-                            })}
+                                              <div className="flex items-center gap-1.5">
+                                                {/* Creator chip (small) */}
+                                                {createdBy && (
+                                                  <div title={`Created by @${createdBy.username}`}>
+                                                    <UserAvatar user={createdBy} size="sm" />
+                                                  </div>
+                                                )}
+
+                                                {/* Assignee chip — clickable to edit */}
+                                                <Popover
+                                                  open={assigneePopoverTaskId === task.id}
+                                                  onOpenChange={(open) => setAssigneePopoverTaskId(open ? task.id : null)}
+                                                >
+                                                  <PopoverTrigger asChild>
+                                                    <button
+                                                      onClick={(e) => e.stopPropagation()}
+                                                      className="flex items-center gap-1 focus:outline-none"
+                                                      title="Change assignee"
+                                                    >
+                                                      {assignee ? (
+                                                        <motion.div
+                                                          whileHover={{ scale: 1.15 }}
+                                                          transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                                                          className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium cursor-pointer hover:ring-2 hover:ring-primary/40 transition-all ${getAvatarClasses(assignee.role, assignee.subroles)}`}
+                                                        >
+                                                          {assignee.avatarUrl ? (
+                                                            <img src={assignee.avatarUrl} alt="" className="w-3.5 h-3.5 rounded-full" />
+                                                          ) : null}
+                                                          <span>{assignee.displayName || assignee.username}</span>
+                                                        </motion.div>
+                                                      ) : (
+                                                        <motion.div
+                                                          whileHover={{ scale: 1.1, opacity: 1 }}
+                                                          className="opacity-0 group-hover:opacity-60 flex items-center gap-0.5 text-[10px] text-muted-foreground border border-dashed border-border/60 px-1.5 py-0.5 rounded-full transition-opacity cursor-pointer hover:border-primary/40"
+                                                        >
+                                                          <UserCog className="w-3 h-3" />
+                                                          <span>Assign</span>
+                                                        </motion.div>
+                                                      )}
+                                                    </button>
+                                                  </PopoverTrigger>
+                                                  <PopoverContent
+                                                    className="w-52 p-1.5"
+                                                    side="top"
+                                                    align="end"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                  >
+                                                    <p className="text-[10px] text-muted-foreground px-2 py-1 uppercase tracking-wider font-semibold">Assign to</p>
+                                                    {/* Unassign option */}
+                                                    <button
+                                                      onClick={() => handleChangeAssignee(task.id, null)}
+                                                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm hover:bg-muted/60 transition-colors text-left ${!assignee ? 'bg-muted/40' : ''}`}
+                                                    >
+                                                      <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                                                        <User className="w-3 h-3 text-muted-foreground" />
+                                                      </div>
+                                                      <span className="text-muted-foreground text-xs">Unassigned</span>
+                                                      {!assignee && <Check className="w-3 h-3 ml-auto text-primary" />}
+                                                    </button>
+                                                    <div className="my-1 border-t border-border/40" />
+                                                    {users?.map(u => {
+                                                      const isSelected = assignee?.id === u.id;
+                                                      return (
+                                                        <button
+                                                          key={u.id}
+                                                          onClick={() => handleChangeAssignee(task.id, u.id)}
+                                                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm hover:bg-muted/60 transition-colors text-left ${isSelected ? 'bg-muted/40' : ''}`}
+                                                        >
+                                                          {u.robloxAvatarUrl ? (
+                                                            <img src={u.robloxAvatarUrl} alt="" className="w-6 h-6 rounded-full flex-shrink-0" />
+                                                          ) : (
+                                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0 ${getAvatarClasses(u.role, u.subroles ?? [])}`}>
+                                                              {u.robloxUsername.charAt(0)}
+                                                            </div>
+                                                          )}
+                                                          <div className="flex-1 min-w-0">
+                                                            <div className="text-xs font-medium truncate">{u.robloxDisplayName || u.robloxUsername}</div>
+                                                            {u.subroles?.[0] && (
+                                                              <div className={`text-[9px] px-1 rounded-sm inline-block ${getSubroleClasses(u.subroles[0])}`}>{u.subroles[0]}</div>
+                                                            )}
+                                                          </div>
+                                                          {isSelected && <Check className="w-3 h-3 flex-shrink-0 text-primary" />}
+                                                        </button>
+                                                      );
+                                                    })}
+                                                  </PopoverContent>
+                                                </Popover>
+                                              </div>
+                                            </div>
+                                          </CardContent>
+                                        </Card>
+                                      </motion.div>
+                                    )}
+                                  </Draggable>
+                                );
+                              })}
+                            </AnimatePresence>
                             {provided.placeholder}
                           </div>
                         )}
@@ -327,12 +410,14 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
 
                       {/* Add task button */}
                       <div className="p-2 border-t border-border/50">
-                        <button
+                        <motion.button
+                          whileHover={{ backgroundColor: 'hsl(var(--muted)/0.5)' }}
+                          whileTap={{ scale: 0.98 }}
                           onClick={() => openTaskDialog(column.id)}
-                          className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-colors"
+                          className="w-full flex items-center gap-2 px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground rounded-md transition-colors"
                         >
                           <Plus className="w-3.5 h-3.5" /> Add task
-                        </button>
+                        </motion.button>
                       </div>
                     </div>
                   )}
@@ -342,32 +427,45 @@ export function KanbanBoard({ boardId }: KanbanBoardProps) {
 
               {/* Add column */}
               <div className="w-72 flex-shrink-0">
-                {addingCol ? (
-                  <div className="bg-card border border-border rounded-lg p-3 space-y-2">
-                    <Input
-                      ref={newColInputRef}
-                      placeholder="Column name"
-                      value={newColName}
-                      onChange={e => setNewColName(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') handleAddColumn();
-                        if (e.key === 'Escape') { setAddingCol(false); setNewColName(''); }
-                      }}
-                      className="h-8 text-sm"
-                    />
-                    <div className="flex gap-2">
-                      <Button size="sm" className="flex-1 h-7 text-xs" onClick={handleAddColumn} disabled={createCol.isPending}>Add</Button>
-                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setAddingCol(false); setNewColName(''); }}>Cancel</Button>
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setAddingCol(true)}
-                    className="w-full flex items-center gap-2 py-3 px-4 rounded-lg border border-dashed border-border/60 text-sm text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors"
-                  >
-                    <Plus className="w-4 h-4" /> Add Column
-                  </button>
-                )}
+                <AnimatePresence mode="wait">
+                  {addingCol ? (
+                    <motion.div
+                      key="adding"
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      className="bg-card border border-border rounded-lg p-3 space-y-2"
+                    >
+                      <Input
+                        ref={newColInputRef}
+                        placeholder="Column name"
+                        value={newColName}
+                        onChange={e => setNewColName(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') handleAddColumn();
+                          if (e.key === 'Escape') { setAddingCol(false); setNewColName(''); }
+                        }}
+                        className="h-8 text-sm"
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" className="flex-1 h-7 text-xs" onClick={handleAddColumn} disabled={createCol.isPending}>Add</Button>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setAddingCol(false); setNewColName(''); }}>Cancel</Button>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.button
+                      key="add-btn"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      whileHover={{ borderColor: 'hsl(var(--primary)/0.4)', color: 'hsl(var(--foreground))' }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setAddingCol(true)}
+                      className="w-full flex items-center gap-2 py-3 px-4 rounded-lg border border-dashed border-border/60 text-sm text-muted-foreground transition-colors"
+                    >
+                      <Plus className="w-4 h-4" /> Add Column
+                    </motion.button>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
           )}
