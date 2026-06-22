@@ -116,92 +116,137 @@ function TeamsManagement() {
   const userList = Array.isArray(users) ? users : [];
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <p className="text-sm text-muted-foreground">Teams control which planning boards are visible to which collaborators.</p>
-        <Button size="sm" className="gap-1.5" onClick={() => setCreateDialogOpen(true)}>
-          <Plus className="w-4 h-4" /> New Team
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-lg bg-indigo-500/15 flex items-center justify-center flex-shrink-0">
+            <Users2 className="w-4.5 h-4.5 text-indigo-400" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-sm">Équipes de visibilité</h3>
+            <p className="text-xs text-muted-foreground mt-0.5 max-w-md">
+              Chaque équipe regroupe des collaborateurs. Lors de la création d'un tableau Kanban, vous pouvez le restreindre à une équipe — seuls ses membres le verront.
+            </p>
+          </div>
+        </div>
+        <Button size="sm" className="gap-1.5 flex-shrink-0" onClick={() => setCreateDialogOpen(true)}>
+          <Plus className="w-4 h-4" /> Nouvelle Équipe
         </Button>
       </div>
 
       {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2].map(i => <Skeleton key={i} className="h-28 rounded-xl" />)}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[1, 2].map(i => <Skeleton key={i} className="h-36 rounded-xl" />)}
         </div>
       ) : teamList.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center border border-dashed border-border/50 rounded-xl">
-          <Users2 className="w-10 h-10 text-muted-foreground/30 mb-3" />
-          <p className="font-medium mb-1">No teams yet</p>
-          <p className="text-sm text-muted-foreground mb-4">Create a team to control board visibility</p>
-          <Button size="sm" onClick={() => setCreateDialogOpen(true)}><Plus className="w-4 h-4 mr-1.5" />New Team</Button>
+        <div className="flex flex-col items-center justify-center py-14 text-center border border-dashed border-border/50 rounded-xl bg-muted/5">
+          <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-3">
+            <Users2 className="w-5 h-5 text-indigo-400/60" />
+          </div>
+          <p className="font-semibold mb-1 text-sm">Aucune équipe</p>
+          <p className="text-xs text-muted-foreground mb-4 max-w-xs">
+            Créez votre première équipe pour contrôler la visibilité des tableaux de planification.
+          </p>
+          <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
+            <Plus className="w-4 h-4 mr-1.5" /> Créer une équipe
+          </Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {teamList.map(team => {
             const memberIds = new Set(team.members.map(m => m.userId));
             const eligible = userList.filter(u => !memberIds.has(u.id));
+            const isAdding = addMemberTeam?.id === team.id;
 
             return (
-              <Card key={team.id} className="border border-border/50">
-                <CardHeader className="pb-3 pt-4 px-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: team.color }} />
-                      <CardTitle className="text-base">{team.name}</CardTitle>
-                      <Badge variant="secondary" className="text-xs">{team.members.length} members</Badge>
+              <Card key={team.id} className="border border-border/50 overflow-hidden">
+                {/* Color band top */}
+                <div className="h-1 w-full" style={{ backgroundColor: team.color }} />
+                <CardHeader className="pb-2 pt-3 px-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-0.5" style={{ backgroundColor: team.color }} />
+                      <div className="min-w-0">
+                        <CardTitle className="text-sm font-semibold leading-tight">{team.name}</CardTitle>
+                        {team.description && (
+                          <p className="text-[11px] text-muted-foreground mt-0.5 leading-tight">{team.description}</p>
+                        )}
+                      </div>
                     </div>
                     <button
                       onClick={() => handleDeleteTeam(team.id)}
-                      className="text-muted-foreground/50 hover:text-destructive transition-colors p-1 rounded"
+                      className="text-muted-foreground/40 hover:text-destructive transition-colors p-1 rounded flex-shrink-0"
+                      title="Supprimer l'équipe"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  {team.description && (
-                    <p className="text-xs text-muted-foreground mt-1">{team.description}</p>
-                  )}
                 </CardHeader>
                 <CardContent className="px-4 pb-4 space-y-3">
-                  {team.members.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {team.members.map(m => (
-                        <div key={m.userId} className="flex items-center gap-1 bg-muted/40 border border-border/50 rounded-full pl-2 pr-1 py-0.5">
-                          <span className="text-xs font-medium">{m.displayName || m.username}</span>
-                          <button
-                            onClick={() => handleRemoveMember(team.id, m.userId)}
-                            className="text-muted-foreground/50 hover:text-destructive transition-colors p-0.5 rounded-full"
-                          >
-                            <X className="w-3 h-3" />
+                  {/* Members */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                        Membres · {team.members.length}
+                      </span>
+                    </div>
+                    {team.members.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {team.members.map(m => (
+                          <div key={m.userId} className="group flex items-center gap-1.5 bg-muted/40 border border-border/50 rounded-full pl-1.5 pr-1 py-0.5">
+                            {m.avatarUrl
+                              ? <img src={m.avatarUrl} alt="" className="w-4 h-4 rounded-full flex-shrink-0" />
+                              : <div className="w-4 h-4 rounded-full bg-muted flex items-center justify-center text-[8px] font-bold">{(m.displayName || m.username).charAt(0)}</div>
+                            }
+                            <span className="text-xs font-medium">{m.displayName || m.username}</span>
+                            <button
+                              onClick={() => handleRemoveMember(team.id, m.userId)}
+                              className="text-muted-foreground/30 hover:text-destructive transition-colors p-0.5 rounded-full"
+                              title="Retirer"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground/50 italic">Aucun membre pour l'instant</p>
+                    )}
+                  </div>
+
+                  {/* Add member */}
+                  {eligible.length > 0 && (
+                    <div className="border-t border-border/40 pt-3">
+                      {!isAdding ? (
+                        <button
+                          onClick={() => { setAddMemberTeam(team); setAddMemberUserId(''); }}
+                          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+                        >
+                          <UserPlus className="w-3.5 h-3.5" /> Ajouter un membre
+                        </button>
+                      ) : (
+                        <div className="flex gap-2 items-center">
+                          <Select value={addMemberUserId} onValueChange={setAddMemberUserId}>
+                            <SelectTrigger className="h-8 text-xs flex-1">
+                              <SelectValue placeholder="Sélectionner un utilisateur…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {eligible.map(u => (
+                                <SelectItem key={u.id} value={String(u.id)} className="text-xs">
+                                  {u.robloxDisplayName || u.robloxUsername}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button size="sm" className="h-8 px-3 text-xs" disabled={!addMemberUserId} onClick={handleAddMember}>
+                            Ajouter
+                          </Button>
+                          <button onClick={() => { setAddMemberTeam(null); setAddMemberUserId(''); }} className="text-muted-foreground hover:text-foreground">
+                            <X className="w-4 h-4" />
                           </button>
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground/60 italic">No members yet</p>
-                  )}
-
-                  {eligible.length > 0 && (
-                    <div className="flex gap-2">
-                      <Select value={addMemberTeam?.id === team.id ? addMemberUserId : ''} onValueChange={v => { setAddMemberTeam(team); setAddMemberUserId(v); }}>
-                        <SelectTrigger className="h-7 text-xs flex-1">
-                          <SelectValue placeholder="Add member…" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {eligible.map(u => (
-                            <SelectItem key={u.id} value={String(u.id)} className="text-xs">
-                              {u.robloxDisplayName || u.robloxUsername}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        disabled={addMemberTeam?.id !== team.id || !addMemberUserId}
-                        onClick={handleAddMember}
-                      >
-                        <UserPlus className="w-3 h-3" />
-                      </Button>
+                      )}
                     </div>
                   )}
                 </CardContent>
@@ -211,35 +256,41 @@ function TeamsManagement() {
         </div>
       )}
 
+      {/* Create team dialog */}
       <Dialog open={createDialogOpen} onOpenChange={(o) => { setCreateDialogOpen(o); if (!o) { setNewTeamName(''); setNewTeamDesc(''); setNewTeamColor(TEAM_COLORS[0]); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Users2 className="w-4 h-4" /> New Team</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Users2 className="w-4 h-4 text-indigo-400" /> Nouvelle Équipe
+            </DialogTitle>
           </DialogHeader>
+          <p className="text-xs text-muted-foreground -mt-1">
+            Cette équipe pourra être assignée à un tableau Kanban pour en restreindre la visibilité.
+          </p>
           <div className="space-y-4 pt-1">
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Team Name <span className="text-destructive">*</span></label>
-              <Input placeholder="e.g. Dev Team" value={newTeamName} onChange={e => setNewTeamName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateTeam()} autoFocus />
+              <label className="text-sm font-medium mb-1.5 block">Nom de l'équipe <span className="text-destructive">*</span></label>
+              <Input placeholder="ex. Dev Team, Art Team…" value={newTeamName} onChange={e => setNewTeamName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateTeam()} autoFocus />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Description</label>
-              <Input placeholder="Optional short description" value={newTeamDesc} onChange={e => setNewTeamDesc(e.target.value)} />
+              <label className="text-sm font-medium mb-1.5 block">Description <span className="text-muted-foreground text-xs font-normal">(optionnel)</span></label>
+              <Input placeholder="Courte description…" value={newTeamDesc} onChange={e => setNewTeamDesc(e.target.value)} />
             </div>
             <div>
-              <label className="text-sm font-medium mb-2 block flex items-center gap-1.5"><Palette className="w-3.5 h-3.5 text-muted-foreground" /> Color</label>
+              <label className="text-sm font-medium mb-2 block">Couleur</label>
               <div className="flex flex-wrap gap-2">
                 {TEAM_COLORS.map(c => (
                   <button
                     key={c}
                     onClick={() => setNewTeamColor(c)}
-                    className={`w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 ${newTeamColor === c ? 'border-white scale-110' : 'border-transparent'}`}
-                    style={{ backgroundColor: c }}
+                    className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${newTeamColor === c ? 'border-white scale-110 ring-2 ring-offset-1 ring-offset-background' : 'border-transparent'}`}
+                    style={{ backgroundColor: c, ...(newTeamColor === c ? { ringColor: c } : {}) }}
                   />
                 ))}
               </div>
             </div>
             <Button className="w-full" onClick={handleCreateTeam} disabled={createTeam.isPending || !newTeamName.trim()}>
-              {createTeam.isPending ? 'Creating…' : 'Create Team'}
+              {createTeam.isPending ? 'Création…' : 'Créer l\'équipe'}
             </Button>
           </div>
         </DialogContent>
@@ -314,126 +365,174 @@ function GroupsManagement() {
   const userList = Array.isArray(users) ? users : [];
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <p className="text-sm text-muted-foreground">Groups let you organise members independently of planning teams.</p>
-        <Button size="sm" className="gap-1.5" onClick={() => setCreateDialogOpen(true)}>
-          <Plus className="w-4 h-4" /> New Group
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-lg bg-amber-500/15 flex items-center justify-center flex-shrink-0">
+            <Users2 className="w-4.5 h-4.5 text-amber-400" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-sm">Groupes de membres</h3>
+            <p className="text-xs text-muted-foreground mt-0.5 max-w-md">
+              Les groupes permettent d'organiser les membres librement (ex. Core Team, Art Team). Ils n'affectent pas la visibilité des tableaux — c'est pour la gestion interne.
+            </p>
+          </div>
+        </div>
+        <Button size="sm" className="gap-1.5 flex-shrink-0" onClick={() => setCreateDialogOpen(true)}>
+          <Plus className="w-4 h-4" /> Nouveau Groupe
         </Button>
       </div>
 
       {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2].map(i => <Skeleton key={i} className="h-24 w-full" />)}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[1, 2].map(i => <Skeleton key={i} className="h-32 rounded-xl" />)}
         </div>
       ) : groupList.length === 0 ? (
-        <Card><CardContent className="py-10 text-center text-muted-foreground text-sm">No groups yet. Create one to get started.</CardContent></Card>
+        <div className="flex flex-col items-center justify-center py-14 text-center border border-dashed border-border/50 rounded-xl bg-muted/5">
+          <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center mb-3">
+            <Users2 className="w-5 h-5 text-amber-400/60" />
+          </div>
+          <p className="font-semibold mb-1 text-sm">Aucun groupe</p>
+          <p className="text-xs text-muted-foreground mb-4 max-w-xs">
+            Créez un groupe pour organiser vos membres (Core Team, Art Team, Investors…).
+          </p>
+          <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
+            <Plus className="w-4 h-4 mr-1.5" /> Créer un groupe
+          </Button>
+        </div>
       ) : (
-        <div className="space-y-3">
-          {groupList.map(group => (
-            <Card key={group.id}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: group.color }} />
-                    <div>
-                      <div className="font-medium text-sm">{group.name}</div>
-                      {group.description && <div className="text-xs text-muted-foreground">{group.description}</div>}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {groupList.map(group => {
+            const eligible = userList.filter(u => !group.members.some(m => m.id === u.id));
+            const isAdding = addMemberGroupId === group.id;
+
+            return (
+              <Card key={group.id} className="border border-border/50 overflow-hidden">
+                {/* Color band top */}
+                <div className="h-1 w-full" style={{ backgroundColor: group.color }} />
+                <CardContent className="p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-0.5" style={{ backgroundColor: group.color }} />
+                      <div className="min-w-0">
+                        <div className="font-semibold text-sm leading-tight">{group.name}</div>
+                        {group.description && (
+                          <div className="text-[11px] text-muted-foreground mt-0.5">{group.description}</div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm" variant="ghost"
-                      className="h-7 text-xs gap-1.5"
-                      onClick={() => setAddMemberGroupId(group.id)}
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Add
-                    </Button>
-                    <Button
-                      size="sm" variant="ghost"
-                      className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                    <button
                       onClick={() => deleteGroup.mutate(group.id)}
+                      className="text-muted-foreground/40 hover:text-destructive transition-colors p-1 rounded flex-shrink-0"
+                      title="Supprimer le groupe"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
+                    </button>
                   </div>
-                </div>
 
-                {/* Add member row */}
-                {addMemberGroupId === group.id && (
-                  <div className="mt-3 flex gap-2 border-t border-border/40 pt-3">
-                    <Select value={addMemberUserId} onValueChange={setAddMemberUserId}>
-                      <SelectTrigger className="h-8 text-xs flex-1">
-                        <SelectValue placeholder="Select a user…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {userList
-                          .filter(u => !group.members.some(m => m.id === u.id))
-                          .map(u => (
-                            <SelectItem key={u.id} value={String(u.id)}>
-                              {u.robloxDisplayName || u.robloxUsername}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                    <Button size="sm" className="h-8 text-xs" onClick={handleAddMember} disabled={!addMemberUserId}>Add</Button>
-                    <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={() => { setAddMemberGroupId(null); setAddMemberUserId(''); }}>Cancel</Button>
-                  </div>
-                )}
-
-                {/* Members */}
-                {group.members.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {group.members.map(m => (
-                      <div key={m.id} className="flex items-center gap-1 bg-muted/40 rounded-full pl-0.5 pr-2 py-0.5">
-                        {m.avatarUrl
-                          ? <img src={m.avatarUrl} alt="" className="w-5 h-5 rounded-full" />
-                          : <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-[9px] font-bold">{m.username.charAt(0)}</div>
-                        }
-                        <span className="text-xs">{m.displayName || m.username}</span>
-                        <button
-                          onClick={() => removeMember.mutate({ groupId: group.id, userId: m.id })}
-                          className="ml-0.5 text-muted-foreground hover:text-destructive transition-colors"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
+                  {/* Members */}
+                  <div>
+                    <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide block mb-2">
+                      Membres · {group.members.length}
+                    </span>
+                    {group.members.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {group.members.map(m => (
+                          <div key={m.id} className="flex items-center gap-1.5 bg-muted/40 border border-border/50 rounded-full pl-1 pr-1.5 py-0.5">
+                            {m.avatarUrl
+                              ? <img src={m.avatarUrl} alt="" className="w-4 h-4 rounded-full flex-shrink-0" />
+                              : <div className="w-4 h-4 rounded-full bg-muted flex items-center justify-center text-[8px] font-bold">{m.username.charAt(0)}</div>
+                            }
+                            <span className="text-xs font-medium">{m.displayName || m.username}</span>
+                            <button
+                              onClick={() => removeMember.mutate({ groupId: group.id, userId: m.id })}
+                              className="text-muted-foreground/30 hover:text-destructive transition-colors"
+                              title="Retirer"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    ) : (
+                      <p className="text-xs text-muted-foreground/50 italic">Aucun membre pour l'instant</p>
+                    )}
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+
+                  {/* Add member */}
+                  {eligible.length > 0 && (
+                    <div className="border-t border-border/40 pt-3">
+                      {!isAdding ? (
+                        <button
+                          onClick={() => { setAddMemberGroupId(group.id); setAddMemberUserId(''); }}
+                          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+                        >
+                          <UserPlus className="w-3.5 h-3.5" /> Ajouter un membre
+                        </button>
+                      ) : (
+                        <div className="flex gap-2 items-center">
+                          <Select value={addMemberUserId} onValueChange={setAddMemberUserId}>
+                            <SelectTrigger className="h-8 text-xs flex-1">
+                              <SelectValue placeholder="Sélectionner un utilisateur…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {eligible.map(u => (
+                                <SelectItem key={u.id} value={String(u.id)} className="text-xs">
+                                  {u.robloxDisplayName || u.robloxUsername}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button size="sm" className="h-8 px-3 text-xs" disabled={!addMemberUserId} onClick={handleAddMember}>
+                            Ajouter
+                          </Button>
+                          <button onClick={() => { setAddMemberGroupId(null); setAddMemberUserId(''); }} className="text-muted-foreground hover:text-foreground">
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
       {/* Create group dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>New Group</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users2 className="w-4 h-4 text-amber-400" /> Nouveau Groupe
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-xs text-muted-foreground -mt-1">
+            Un groupe permet d'organiser vos membres pour référence interne (ex. Core Team, Art Team).
+          </p>
           <div className="space-y-3 pt-1">
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Name *</label>
-              <Input placeholder="e.g. Art Team" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateGroup()} autoFocus />
+              <label className="text-sm font-medium mb-1.5 block">Nom du groupe <span className="text-destructive">*</span></label>
+              <Input placeholder="ex. Core Team, Art Team…" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateGroup()} autoFocus />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Description</label>
-              <Input placeholder="Optional…" value={newGroupDesc} onChange={e => setNewGroupDesc(e.target.value)} />
+              <label className="text-sm font-medium mb-1.5 block">Description <span className="text-muted-foreground text-xs font-normal">(optionnel)</span></label>
+              <Input placeholder="Courte description…" value={newGroupDesc} onChange={e => setNewGroupDesc(e.target.value)} />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 flex items-center gap-1.5 block">
-                <Palette className="w-3.5 h-3.5 text-muted-foreground" /> Color
-              </label>
+              <label className="text-sm font-medium mb-2 block">Couleur</label>
               <div className="flex gap-2 flex-wrap">
                 {GROUP_COLORS.map(c => (
                   <button key={c} onClick={() => setNewGroupColor(c)}
-                    className={`w-6 h-6 rounded-full transition-transform ${newGroupColor === c ? 'ring-2 ring-offset-2 ring-offset-background scale-110' : 'hover:scale-105'}`}
+                    className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${newGroupColor === c ? 'border-white scale-110' : 'border-transparent'}`}
                     style={{ backgroundColor: c }} />
                 ))}
               </div>
             </div>
             <Button className="w-full" onClick={handleCreateGroup} disabled={createGroup.isPending || !newGroupName.trim()}>
-              {createGroup.isPending ? 'Creating…' : 'Create Group'}
+              {createGroup.isPending ? 'Création…' : 'Créer le groupe'}
             </Button>
           </div>
         </DialogContent>
@@ -574,12 +673,12 @@ export default function Users() {
           </TabsTrigger>
           {isAdmin && (
             <TabsTrigger value="teams" className="gap-1.5">
-              <Shield className="w-3.5 h-3.5" /> Teams
+              <Shield className="w-3.5 h-3.5" /> Équipes
             </TabsTrigger>
           )}
           {isAdmin && (
             <TabsTrigger value="groups" className="gap-1.5">
-              <Users2 className="w-3.5 h-3.5" /> Groups
+              <Users2 className="w-3.5 h-3.5" /> Groupes
             </TabsTrigger>
           )}
         </TabsList>

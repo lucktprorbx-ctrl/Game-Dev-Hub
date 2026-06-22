@@ -103,3 +103,15 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+/* Hide Replit badge */
+[data-replit-badge],
+#replit-badge,
+.replit-badge,
+a[href*="replit.com"][style*="position: fixed"],
+a[href*="replit.com"][style*="position:fixed"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

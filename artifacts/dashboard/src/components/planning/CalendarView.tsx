@@ -144,26 +144,42 @@ export function CalendarView() {
                     const attendees = ((event as any).attendees ?? []) as UserInfo[];
                     const createdBy = (event as any).createdBy as UserInfo | null;
                     const displayAvatars = attendees.length > 0 ? attendees : createdBy ? [createdBy] : [];
+                    const isAllDay = (event as any).allDay;
+                    const startStr = !isAllDay && event.startDate
+                      ? format(new Date(event.startDate), 'HH:mm')
+                      : null;
+                    const endStr = !isAllDay && event.endDate
+                      ? format(new Date(event.endDate), 'HH:mm')
+                      : null;
                     return (
                       <div
                         key={event.id}
                         onClick={e => e.stopPropagation()}
-                        className="text-[10px] truncate px-1.5 py-0.5 rounded-sm flex items-center justify-between group/event"
-                        style={{ backgroundColor: `${event.color ?? '#f59e0b'}25`, color: event.color ?? '#f59e0b', borderLeft: `2px solid ${event.color ?? '#f59e0b'}` }}
+                        className="text-[10px] px-1.5 py-1 rounded-sm group/event"
+                        style={{ backgroundColor: `${event.color ?? '#f59e0b'}20`, color: event.color ?? '#f59e0b', borderLeft: `2px solid ${event.color ?? '#f59e0b'}` }}
                       >
-                        <span className="truncate flex-1">{event.title}</span>
-                        <div className="flex items-center gap-0.5 ml-1 flex-shrink-0">
-                          <AttendeeAvatars attendees={displayAvatars} />
-                          <Trash2
-                            className="w-2.5 h-2.5 opacity-0 group-hover/event:opacity-100 cursor-pointer"
-                            onClick={e => handleDelete(event.id, e)}
-                          />
+                        <div className="flex items-start justify-between gap-0.5">
+                          <span className="truncate flex-1 font-semibold leading-tight">{event.title}</span>
+                          <div className="flex items-center gap-0.5 flex-shrink-0 mt-0.5">
+                            <AttendeeAvatars attendees={displayAvatars} />
+                            <Trash2
+                              className="w-2.5 h-2.5 opacity-0 group-hover/event:opacity-100 cursor-pointer ml-0.5"
+                              onClick={e => handleDelete(event.id, e)}
+                            />
+                          </div>
                         </div>
+                        {startStr && endStr ? (
+                          <div className="text-[9px] mt-0.5 font-medium opacity-80">
+                            {startStr} – {endStr}
+                          </div>
+                        ) : isAllDay ? (
+                          <div className="text-[9px] mt-0.5 font-medium opacity-70">Toute la journée</div>
+                        ) : null}
                       </div>
                     );
                   })}
                   {dayEvents.length > 3 && (
-                    <div className="text-[10px] text-muted-foreground px-1">+{dayEvents.length - 3} more</div>
+                    <div className="text-[10px] text-muted-foreground px-1">+{dayEvents.length - 3} de plus</div>
                   )}
                 </div>
               </div>
