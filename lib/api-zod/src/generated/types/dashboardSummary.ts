@@ -10,9 +10,5 @@ import type { Game } from './game';
 export interface DashboardSummary {
   totalGames: number;
   totalCcu: number;
-  totalDailyRevenue: number;
-  totalDailyRevenueEur: number;
-  monthlyEstimateRobux: number;
-  monthlyEstimateEur: number;
   topGame?: Game;
 }

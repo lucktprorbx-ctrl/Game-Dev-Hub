@@ -40,7 +40,6 @@ import type {
   HealthStatus,
   ListEventsParams,
   ListTasksParams,
-  RevenueTrackerEntry,
   Task,
   TaskInput,
   TaskUpdate,
@@ -665,7 +664,7 @@ export const getGetGameStatsUrl = (id: number,) => {
 }
 
 /**
- * @summary Get real-time stats for a game (CCU, revenue)
+ * @summary Get real-time stats for a game (CCU, visits, favorites)
  */
 export const getGameStats = async (id: number, options?: RequestInit): Promise<GameStats> => {
 
@@ -712,7 +711,7 @@ export type GetGameStatsQueryError = ErrorType<unknown>
 
 
 /**
- * @summary Get real-time stats for a game (CCU, revenue)
+ * @summary Get real-time stats for a game (CCU, visits, favorites)
  */
 
 export function useGetGameStats<TData = Awaited<ReturnType<typeof getGameStats>>, TError = ErrorType<unknown>>(
@@ -798,83 +797,6 @@ export function useGetDashboardSummary<TData = Awaited<ReturnType<typeof getDash
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetDashboardSummaryQueryOptions(options)
-
-  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
-
-  return { ...query, queryKey: queryOptions.queryKey };
-}
-
-
-
-
-
-
-
-export const getGetRevenueTrackerUrl = () => {
-
-
-
-
-  return `/api/games/revenue-tracker`
-}
-
-/**
- * @summary Revenue tracking with monthly estimates per game
- */
-export const getRevenueTracker = async ( options?: RequestInit): Promise<RevenueTrackerEntry[]> => {
-
-  return customFetch<RevenueTrackerEntry[]>(getGetRevenueTrackerUrl(),
-  {
-    ...options,
-    method: 'GET'
-
-
-  }
-);}
-
-
-
-
-
-export const getGetRevenueTrackerQueryKey = () => {
-    return [
-    `/api/games/revenue-tracker`
-    ] as const;
-    }
-
-
-export const getGetRevenueTrackerQueryOptions = <TData = Awaited<ReturnType<typeof getRevenueTracker>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRevenueTracker>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-) => {
-
-const {query: queryOptions, request: requestOptions} = options ?? {};
-
-  const queryKey =  queryOptions?.queryKey ?? getGetRevenueTrackerQueryKey();
-
-
-
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getRevenueTracker>>> = ({ signal }) => getRevenueTracker({ signal, ...requestOptions });
-
-
-
-
-
-   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getRevenueTracker>>, TError, TData> & { queryKey: QueryKey }
-}
-
-export type GetRevenueTrackerQueryResult = NonNullable<Awaited<ReturnType<typeof getRevenueTracker>>>
-export type GetRevenueTrackerQueryError = ErrorType<unknown>
-
-
-/**
- * @summary Revenue tracking with monthly estimates per game
- */
-
-export function useGetRevenueTracker<TData = Awaited<ReturnType<typeof getRevenueTracker>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getRevenueTracker>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
-
- ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-
-  const queryOptions = getGetRevenueTrackerQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

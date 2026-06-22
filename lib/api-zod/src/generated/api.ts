@@ -118,7 +118,7 @@ export const DeleteGameParams = zod.object({
 
 
 /**
- * @summary Get real-time stats for a game (CCU, revenue)
+ * @summary Get real-time stats for a game (CCU, visits, favorites)
  */
 export const GetGameStatsParams = zod.object({
   "id": zod.coerce.number()
@@ -128,11 +128,9 @@ export const GetGameStatsResponse = zod.object({
   "gameId": zod.number(),
   "ccu": zod.number(),
   "peakCcu": zod.number().optional(),
-  "avgDailyRevenue": zod.number().describe('In Robux'),
-  "avgDailyRevenueEur": zod.number().describe('In Euros'),
-  "monthlyEstimateRobux": zod.number().optional(),
-  "monthlyEstimateEur": zod.number().optional(),
-  "revenuePercentChange": zod.number().optional(),
+  "visits": zod.number().optional(),
+  "favoritedCount": zod.number().optional(),
+  "isLive": zod.boolean().optional(),
   "ccuHistory": zod.array(zod.object({
   "timestamp": zod.coerce.date(),
   "value": zod.number()
@@ -146,10 +144,6 @@ export const GetGameStatsResponse = zod.object({
 export const GetDashboardSummaryResponse = zod.object({
   "totalGames": zod.number(),
   "totalCcu": zod.number(),
-  "totalDailyRevenue": zod.number(),
-  "totalDailyRevenueEur": zod.number(),
-  "monthlyEstimateRobux": zod.number(),
-  "monthlyEstimateEur": zod.number(),
   "topGame": zod.object({
   "id": zod.number(),
   "robloxGameId": zod.string(),
@@ -162,20 +156,6 @@ export const GetDashboardSummaryResponse = zod.object({
   "createdAt": zod.coerce.date()
 }).optional()
 })
-
-
-/**
- * @summary Revenue tracking with monthly estimates per game
- */
-export const GetRevenueTrackerResponseItem = zod.object({
-  "gameId": zod.number(),
-  "gameName": zod.string(),
-  "revenuePercentage": zod.number().describe('Percentage of total revenue'),
-  "monthlyEstimateRobux": zod.number(),
-  "monthlyEstimateEur": zod.number(),
-  "trend": zod.number().describe('Percentage change vs last month')
-})
-export const GetRevenueTrackerResponse = zod.array(GetRevenueTrackerResponseItem)
 
 
 /**

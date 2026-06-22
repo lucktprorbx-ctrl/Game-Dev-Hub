@@ -5,7 +5,6 @@ import Login from '@/pages/login';
 import Dashboard from '@/pages/dashboard';
 import Games from '@/pages/games';
 import GameDetail from '@/pages/games/[id]';
-import Revenue from '@/pages/revenue';
 import Users from '@/pages/users';
 import Planning from '@/pages/planning';
 import Privacy from '@/pages/privacy';
@@ -47,9 +46,6 @@ export function AppRouter() {
       </Route>
       <Route path="/games/:id">
         {params => <ProtectedRoute component={GameDetail} adminOnly params={params} />}
-      </Route>
-      <Route path="/revenue">
-        <ProtectedRoute component={Revenue} adminOnly />
       </Route>
       <Route path="/users">
         <ProtectedRoute component={Users} adminOnly />

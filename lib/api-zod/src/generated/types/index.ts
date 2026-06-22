@@ -27,7 +27,6 @@ export * from './groupInfo';
 export * from './healthStatus';
 export * from './listEventsParams';
 export * from './listTasksParams';
-export * from './revenueTrackerEntry';
 export * from './robloxGame';
 export * from './task';
 export * from './taskInput';

@@ -8,7 +8,6 @@ const resources = {
       nav: {
         dashboard: "Dashboard",
         games: "Games",
-        revenue: "Revenue Tracker",
         planning: "Planning",
         users: "Users",
         logout: "Logout",
@@ -21,9 +20,7 @@ const resources = {
       dashboard: {
         title: "Overview",
         totalCcu: "Total CCU",
-        totalRevenue: "Daily Revenue",
         totalGames: "Active Games",
-        monthlyEstimate: "Monthly Estimate",
         welcomeBack: "Welcome back, {{name}}",
         subtitle: "Here's what's happening with your studio.",
         teamMembers: "Team Members",
@@ -46,7 +43,6 @@ const resources = {
         visits: "visits",
         favorites: "favorites",
         statsWhenPublic: "Stats available once the game is public.",
-        revenueAdminOnly: "Revenue data requires Roblox Open Cloud API key (admin)",
         private: "Private",
         team: "Team",
         manage: "Manage →",
@@ -204,11 +200,6 @@ const resources = {
         cancel: "Cancel",
         membersOf: "Members",
       },
-      revenue: {
-        comingSoon: "Revenue Tracker",
-        noApiDesc: "Roblox doesn't currently provide a public real-time revenue API. This section will display earnings, splits, and monthly estimates once the Roblox Open Cloud API supports it.",
-        comingSoonBadge: "Tracking coming soon · Roblox Open Cloud roadmap",
-      },
       common: {
         loading: "Loading...",
         error: "An error occurred.",
@@ -218,8 +209,6 @@ const resources = {
         edit: "Edit",
         create: "Create",
         add: "Add",
-        robux: "R$",
-        eur: "€",
         active: "Active",
         inactive: "Inactive",
         optional: "(optional)",
@@ -243,7 +232,6 @@ const resources = {
       nav: {
         dashboard: "Tableau de Bord",
         games: "Jeux",
-        revenue: "Suivi des Revenus",
         planning: "Planification",
         users: "Utilisateurs",
         logout: "Se Déconnecter",
@@ -256,9 +244,7 @@ const resources = {
       dashboard: {
         title: "Aperçu",
         totalCcu: "CCU Total",
-        totalRevenue: "Revenu Quotidien",
         totalGames: "Jeux Actifs",
-        monthlyEstimate: "Estimation Mensuelle",
         welcomeBack: "Bienvenue, {{name}}",
         subtitle: "Voici ce qui se passe dans votre studio.",
         teamMembers: "Membres de l'Équipe",
@@ -281,7 +267,6 @@ const resources = {
         visits: "visites",
         favorites: "favoris",
         statsWhenPublic: "Statistiques disponibles une fois le jeu public.",
-        revenueAdminOnly: "Données de revenus disponibles via Roblox Open Cloud API (admin)",
         private: "Privé",
         team: "Équipe",
         manage: "Gérer →",
@@ -439,11 +424,6 @@ const resources = {
         cancel: "Annuler",
         membersOf: "Membres",
       },
-      revenue: {
-        comingSoon: "Suivi des Revenus",
-        noApiDesc: "Roblox ne fournit pas encore d'API publique pour les revenus en temps réel. Cette section affichera les gains, les répartitions et les estimations mensuelles dès que l'API Roblox Open Cloud le permettra.",
-        comingSoonBadge: "Suivi bientôt disponible · Feuille de route Roblox Open Cloud",
-      },
       common: {
         loading: "Chargement...",
         error: "Une erreur est survenue.",
@@ -453,8 +433,6 @@ const resources = {
         edit: "Modifier",
         create: "Créer",
         add: "Ajouter",
-        robux: "R$",
-        eur: "€",
         active: "Actif",
         inactive: "Inactif",
         optional: "(optionnel)",

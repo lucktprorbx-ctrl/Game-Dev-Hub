@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PageTransition } from '@/components/ui/page-transition';
 import { useTranslation } from 'react-i18next';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
-import { Users, Coins, TrendingUp } from 'lucide-react';
+import { Users, Star, Eye } from 'lucide-react';
 
 export default function GameDetail() {
   const { id } = useParams();
@@ -20,51 +20,49 @@ export default function GameDetail() {
       <div className="flex flex-col gap-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">{game.name}</h1>
-          <p className="text-muted-foreground">ID: {game.robloxGameId}</p>
+          <p className="text-muted-foreground">Universe ID: {game.robloxGameId}</p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Current CCU</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">CCU actuel</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.ccu.toLocaleString()}</div>
-              {stats.peakCcu && <p className="text-xs text-muted-foreground mt-1">Peak: {stats.peakCcu.toLocaleString()}</p>}
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Daily Revenue</CardTitle>
-              <Coins className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{t('common.robux')}{stats.avgDailyRevenue.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground mt-1">~ {t('common.eur')}{stats.avgDailyRevenueEur.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              {stats.peakCcu ? (
+                <p className="text-xs text-muted-foreground mt-1">Peak : {stats.peakCcu.toLocaleString()}</p>
+              ) : null}
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Estimate</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-muted-foreground">Visites totales</CardTitle>
+              <Eye className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-primary">{t('common.robux')}{stats.monthlyEstimateRobux?.toLocaleString() || 0}</div>
-              {stats.revenuePercentChange !== undefined && (
-                <p className={`text-xs mt-1 ${stats.revenuePercentChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                  {stats.revenuePercentChange >= 0 ? '+' : ''}{stats.revenuePercentChange}% vs last month
-                </p>
-              )}
+              <div className="text-2xl font-bold">{(stats.visits ?? 0).toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground mt-1">depuis le lancement</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Favoris</CardTitle>
+              <Star className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{(stats.favoritedCount ?? 0).toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground mt-1">joueurs ayant mis en favori</p>
             </CardContent>
           </Card>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>CCU History</CardTitle>
+            <CardTitle>Historique CCU (24h)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[300px] w-full">
@@ -78,7 +76,7 @@ export default function GameDetail() {
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-full text-muted-foreground">No history data available</div>
+                <div className="flex items-center justify-center h-full text-muted-foreground">Aucune donnée disponible</div>
               )}
             </div>
           </CardContent>

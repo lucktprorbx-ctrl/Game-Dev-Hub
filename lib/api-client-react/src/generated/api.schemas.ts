@@ -104,35 +104,16 @@ export interface GameStats {
   gameId: number;
   ccu: number;
   peakCcu?: number;
-  /** In Robux */
-  avgDailyRevenue: number;
-  /** In Euros */
-  avgDailyRevenueEur: number;
-  monthlyEstimateRobux?: number;
-  monthlyEstimateEur?: number;
-  revenuePercentChange?: number;
+  visits?: number;
+  favoritedCount?: number;
+  isLive?: boolean;
   ccuHistory?: TimeseriesPoint[];
 }
 
 export interface DashboardSummary {
   totalGames: number;
   totalCcu: number;
-  totalDailyRevenue: number;
-  totalDailyRevenueEur: number;
-  monthlyEstimateRobux: number;
-  monthlyEstimateEur: number;
   topGame?: Game;
-}
-
-export interface RevenueTrackerEntry {
-  gameId: number;
-  gameName: string;
-  /** Percentage of total revenue */
-  revenuePercentage: number;
-  monthlyEstimateRobux: number;
-  monthlyEstimateEur: number;
-  /** Percentage change vs last month */
-  trend: number;
 }
 
 export type TeamMemberRole = typeof TeamMemberRole[keyof typeof TeamMemberRole];

@@ -5,7 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { PageTransition } from '@/components/ui/page-transition';
 import { useAuth } from '@/contexts/AuthContext';
-import { Users, Columns2, CalendarDays, Shield, ChevronDown, ChevronRight, Eye, Lock, Gamepad2, TrendingUp } from 'lucide-react';
+import { Users, Columns2, CalendarDays, Shield, ChevronRight, Eye, Lock, Gamepad2 } from 'lucide-react';
 import { motion, animate, AnimatePresence } from 'framer-motion';
 import { Link } from 'wouter';
 import { useTranslation } from 'react-i18next';
@@ -286,12 +286,6 @@ export default function Dashboard() {
                                   )}
                                   {game.isPrivate && (
                                     <p className="text-xs text-muted-foreground">Stats available once the game is public.</p>
-                                  )}
-                                  {isAdmin && !game.isPrivate && (
-                                    <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-400/80">
-                                      <TrendingUp className="w-3 h-3" />
-                                      <span>Revenue data requires Roblox Open Cloud API key (admin)</span>
-                                    </div>
                                   )}
                                 </div>
                               </div>

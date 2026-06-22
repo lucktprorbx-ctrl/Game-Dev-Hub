@@ -154,7 +154,7 @@ paths:
     get:
       operationId: getGameStats
       tags: [games]
-      summary: Get real-time stats for a game (CCU, revenue)
+      summary: Get real-time stats for a game (CCU, visits, favorites)
       parameters:
         - name: id
           in: path
@@ -181,21 +181,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DashboardSummary"
-
-  /games/revenue-tracker:
-    get:
-      operationId: getRevenueTracker
-      tags: [games]
-      summary: Revenue tracking with monthly estimates per game
-      responses:
-        "200":
-          description: Revenue tracker data
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/RevenueTrackerEntry"
 
   /users:
     get:
@@ -901,7 +886,7 @@ components:
 
     GameStats:
       type: object
-      required: [gameId, ccu, avgDailyRevenue, avgDailyRevenueEur]
+      required: [gameId, ccu]
       properties:
         gameId:
           type: integer
@@ -909,18 +894,12 @@ components:
           type: integer
         peakCcu:
           type: integer
-        avgDailyRevenue:
-          type: number
-          description: In Robux
-        avgDailyRevenueEur:
-          type: number
-          description: In Euros
-        monthlyEstimateRobux:
-          type: number
-        monthlyEstimateEur:
-          type: number
-        revenuePercentChange:
-          type: number
+        visits:
+          type: integer
+        favoritedCount:
+          type: integer
+        isLive:
+          type: boolean
         ccuHistory:
           type: array
           items:
@@ -938,41 +917,14 @@ components:
 
     DashboardSummary:
       type: object
-      required: [totalGames, totalCcu, totalDailyRevenue, totalDailyRevenueEur, monthlyEstimateRobux, monthlyEstimateEur]
+      required: [totalGames, totalCcu]
       properties:
         totalGames:
           type: integer
         totalCcu:
           type: integer
-        totalDailyRevenue:
-          type: number
-        totalDailyRevenueEur:
-          type: number
-        monthlyEstimateRobux:
-          type: number
-        monthlyEstimateEur:
-          type: number
         topGame:
           $ref: "#/components/schemas/Game"
-
-    RevenueTrackerEntry:
-      type: object
-      required: [gameId, gameName, revenuePercentage, monthlyEstimateRobux, monthlyEstimateEur, trend]
-      properties:
-        gameId:
-          type: integer
-        gameName:
-          type: string
-        revenuePercentage:
-          type: number
-          description: Percentage of total revenue
-        monthlyEstimateRobux:
-          type: number
-        monthlyEstimateEur:
-          type: number
-        trend:
-          type: number
-          description: Percentage change vs last month
 
     Team:
       type: object

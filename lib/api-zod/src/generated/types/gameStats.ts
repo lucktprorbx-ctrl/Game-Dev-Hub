@@ -11,12 +11,8 @@ export interface GameStats {
   gameId: number;
   ccu: number;
   peakCcu?: number;
-  /** In Robux */
-  avgDailyRevenue: number;
-  /** In Euros */
-  avgDailyRevenueEur: number;
-  monthlyEstimateRobux?: number;
-  monthlyEstimateEur?: number;
-  revenuePercentChange?: number;
+  visits?: number;
+  favoritedCount?: number;
+  isLive?: boolean;
   ccuHistory?: TimeseriesPoint[];
 }

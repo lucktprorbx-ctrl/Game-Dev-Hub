@@ -4,7 +4,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { 
   LayoutDashboard, 
-  TrendingUp, 
   CalendarDays, 
   Users,
   LogOut,
@@ -34,7 +33,6 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
   const navItems = [
     { href: '/', icon: LayoutDashboard, label: t('nav.dashboard'), adminOnly: true },
     { href: '/games', icon: Gamepad2, label: t('nav.games'), adminOnly: false },
-    { href: '/revenue', icon: TrendingUp, label: t('nav.revenue'), adminOnly: true },
     { href: '/planning', icon: CalendarDays, label: t('nav.planning'), adminOnly: false },
     { href: '/users', icon: Users, label: t('nav.users'), adminOnly: true },
   ];
