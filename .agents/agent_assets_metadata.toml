@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "gQfNc6IcV0gkMY9G7Q7ah"
+uri = "file://replit.md"
+type = "text"
+title = "Guide Windows + VSCode — replit.md"

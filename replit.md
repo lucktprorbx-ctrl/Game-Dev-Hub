@@ -69,3 +69,115 @@ Studio Operations Hub pour la gestion des jeux Roblox de RoVerseFR — stats en 
 
 - See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
 - Roblox OAuth docs: https://create.roblox.com/docs/cloud/oauth2
+
+---
+
+## Guide — Lancer le projet en local sur Windows (VSCode)
+
+### Prérequis
+
+| Outil | Téléchargement | Version min. |
+|---|---|---|
+| **Node.js** | https://nodejs.org (LTS ou Current) | 20+ |
+| **pnpm** | `npm install -g pnpm` dans un terminal | 9+ |
+| **PostgreSQL** | https://www.postgresql.org/download/windows/ | 15+ |
+| **Git** | https://git-scm.com | — |
+| **VSCode** | https://code.visualstudio.com | — |
+
+> **Alternative à PostgreSQL en local** : utiliser [Docker Desktop](https://www.docker.com/products/docker-desktop/) et lancer `docker run --name roverse-pg -e POSTGRES_PASSWORD=postgres -p 5432:5432 -d postgres:16`
+
+---
+
+### 1 — Cloner le projet
+
+```powershell
+git clone <URL_DU_REPO> roverse-dashboard
+cd roverse-dashboard
+```
+
+Ouvrir dans VSCode :
+```powershell
+code .
+```
+
+---
+
+### 2 — Installer les dépendances
+
+Dans le terminal intégré VSCode (`Ctrl+ù` ou `Ctrl+\``) :
+
+```powershell
+pnpm install
+```
+
+---
+
+### 3 — Variables d'environnement
+
+Créer un fichier **`.env`** à la racine du projet (ou dans `artifacts/api-server/.env`) :
+
+```env
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/roverse
+ROBLOX_CLIENT_ID=<ton_client_id>
+ROBLOX_CLIENT_SECRET=<ton_client_secret>
+SESSION_SECRET=une-chaine-aleatoire-longue
+```
+
+> Pour obtenir `ROBLOX_CLIENT_ID` et `ROBLOX_CLIENT_SECRET` : créer une application OAuth sur [Roblox Creator Dashboard](https://create.roblox.com/dashboard/credentials) et ajouter `http://localhost:8080/api/auth/roblox/callback` comme redirect URI autorisé.
+
+---
+
+### 4 — Initialiser la base de données
+
+```powershell
+pnpm --filter @workspace/db run push
+```
+
+---
+
+### 5 — Lancer les serveurs (2 terminaux)
+
+Sur Windows, on lance les deux serveurs séparément (le script `start-dev.sh` est Linux-only) :
+
+**Terminal 1 — API server (port 8080)**
+```powershell
+pnpm --filter @workspace/api-server run dev
+```
+
+**Terminal 2 — Frontend (port 5173)**
+```powershell
+pnpm --filter @workspace/dashboard run dev
+```
+
+> Dans VSCode, ouvre deux terminaux avec le bouton **+** dans le panneau terminal.
+
+---
+
+### 6 — Accéder à l'app
+
+Ouvrir dans le navigateur : **http://localhost:5173**
+
+Se connecter avec un compte Roblox dont l'ID est dans la liste admin/collaborator (voir `artifacts/api-server/src/routes/auth.ts`).
+
+---
+
+### Extensions VSCode recommandées
+
+Installer via `Ctrl+Shift+X` :
+
+- **ESLint** (`dbaeumer.vscode-eslint`)
+- **Prettier** (`esbenp.prettier-vscode`)
+- **Tailwind CSS IntelliSense** (`bradlc.vscode-tailwindcss`)
+- **TypeScript Error Lens** (`usernamehw.errorlens`)
+- **PostgreSQL** (`cweijan.vscode-postgresql-client2`) — pour voir la BDD directement
+
+---
+
+### Problèmes fréquents sur Windows
+
+| Symptôme | Solution |
+|---|---|
+| `pnpm : Le fichier n'est pas signé…` | Ouvrir PowerShell en admin → `Set-ExecutionPolicy RemoteSigned` |
+| `ECONNREFUSED` sur port 5432 | PostgreSQL n't est pas démarré → lancer le service depuis *Services Windows* |
+| Page blanche sur localhost:5173 | L'API server (terminal 1) doit tourner en même temps |
+| Erreur OAuth redirect | Vérifier que `http://localhost:8080/api/auth/roblox/callback` est bien dans les redirect URIs Roblox |
