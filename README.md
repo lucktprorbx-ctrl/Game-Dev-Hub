@@ -1,204 +1,232 @@
 # RoCheck — Roblox Studio Operations Hub
 
-A full-stack dashboard for managing a Roblox game studio: team members, Kanban planning boards, calendar, notes, and Roblox group analytics.
+Dashboard de gestion pour studios Roblox : membres d'équipe, Kanban, calendrier, notes et analytics de groupe.
 
-**Tech stack:** React 19 + Vite + Tailwind v4 + shadcn/ui · Express 5 · PostgreSQL + Drizzle ORM · Roblox OAuth2 · react-i18next (EN/FR) · wouter
-
----
-
-## Local Development — Windows + VSCode
-
-### Prerequisites
-
-| Tool | Version | Download |
-|------|---------|----------|
-| **Node.js** | 22+ LTS | https://nodejs.org |
-| **pnpm** | 9+ | `npm install -g pnpm` |
-| **PostgreSQL** | 16+ | https://www.postgresql.org/download/windows/ |
-| **Git** | any | https://git-scm.com |
-
-> **VSCode extensions recommended:** ESLint, Prettier, Tailwind CSS IntelliSense, Prisma (for .env syntax)
+**Stack :** React 19 · Vite · Tailwind CSS v4 · shadcn/ui · Express 5 · PostgreSQL · Drizzle ORM · Roblox OAuth2 · react-i18next (EN/FR)
 
 ---
 
-### 1 — Clone the repo
+## Démarrage rapide — Docker (Windows & Linux)
 
-```powershell
-git clone <repo-url>
-cd roverse-dashboard
+La méthode la plus simple. Une seule commande, rien à installer sauf Docker.
+
+### Prérequis
+
+| Outil | Téléchargement |
+|-------|---------------|
+| **Docker Desktop** | https://www.docker.com/products/docker-desktop/ |
+| **Git** | https://git-scm.com |
+
+### Étapes
+
+**1 — Cloner le projet**
+
+```bash
+git clone https://github.com/lucktprorbx-ctrl/Game-Dev-Hub.git
+cd Game-Dev-Hub
 ```
 
----
+**2 — Créer le fichier `.env`**
 
-### 2 — Create the PostgreSQL database
+```bash
+# Windows (cmd)
+copy .env.example .env
 
-Open **pgAdmin** or **psql** and run:
-
-```sql
-CREATE DATABASE roverse_db;
+# Windows (PowerShell) / macOS / Linux
+cp .env.example .env
 ```
 
----
-
-### 3 — Set up environment variables
-
-Copy the example file and fill in your values:
-
-```powershell
-copy .env.example artifacts\api-server\.env
-```
-
-Open `artifacts\api-server\.env` and set:
+Ouvrir `.env` et renseigner les clés Roblox OAuth (voir [Obtenir les clés Roblox](#obtenir-les-clés-roblox-oauth2)) :
 
 ```env
-DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/roverse_db
-ROBLOX_CLIENT_ID=your_client_id
-ROBLOX_CLIENT_SECRET=your_client_secret
-SESSION_SECRET=generate_a_long_random_string_here
-PORT=8080
+DATABASE_URL=postgresql://rocheck:rocheck123@localhost:5432/rocheck
+ROBLOX_CLIENT_ID=ton_client_id
+ROBLOX_CLIENT_SECRET=ton_client_secret
+ROBLOX_REDIRECT_URI=http://localhost:5000/api/auth/roblox/callback
+SESSION_SECRET=une_chaine_aleatoire_longue
 ```
 
-#### Get Roblox OAuth2 credentials
+**3 — Lancer**
 
-1. Go to https://create.roblox.com/dashboard/credentials
-2. Create a new **OAuth 2.0** application
-3. Add this redirect URI: `http://localhost:5000/api/auth/roblox/callback`
-4. Copy the **Client ID** and **Client Secret**
-
-#### Generate a session secret
-
-```powershell
-node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"
+```bash
+docker compose up
 ```
+
+| URL | Description |
+|-----|-------------|
+| **http://localhost:5000** | Application |
+| **http://localhost:8082** | Adminer — gestionnaire de base de données (comme phpMyAdmin) |
+
+Pour arrêter : `Ctrl+C` puis `docker compose down`.
 
 ---
 
-### 4 — Install dependencies
+## Démarrage manuel — sans Docker (Windows / Linux)
 
-```powershell
+### Prérequis
+
+| Outil | Version | Téléchargement |
+|-------|---------|---------------|
+| **Node.js** | 20+ LTS | https://nodejs.org |
+| **pnpm** | 9+ | `npm install -g pnpm` |
+| **PostgreSQL** | 16+ | https://www.postgresql.org/download/ |
+| **Git** | any | https://git-scm.com |
+
+### Étapes
+
+**1 — Cloner et installer**
+
+```bash
+git clone https://github.com/lucktprorbx-ctrl/Game-Dev-Hub.git
+cd Game-Dev-Hub
 pnpm install
 ```
 
----
+**2 — Créer la base de données PostgreSQL**
 
-### 5 — Run database migrations
+Dans psql ou pgAdmin :
 
-```powershell
+```sql
+CREATE DATABASE rocheck;
+```
+
+**3 — Créer le fichier `.env`**
+
+```bash
+cp .env.example .env   # ou: copy .env.example .env (Windows cmd)
+```
+
+Renseigner les valeurs dans `.env` :
+
+```env
+DATABASE_URL=postgresql://postgres:TON_MOT_DE_PASSE@localhost:5432/rocheck
+ROBLOX_CLIENT_ID=ton_client_id
+ROBLOX_CLIENT_SECRET=ton_client_secret
+ROBLOX_REDIRECT_URI=http://localhost:5000/api/auth/roblox/callback
+SESSION_SECRET=une_chaine_aleatoire_longue
+```
+
+Générer un `SESSION_SECRET` :
+
+```bash
+node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"
+```
+
+**4 — Appliquer le schéma de base de données**
+
+```bash
 pnpm --filter @workspace/db run push
 ```
 
----
+**5 — Lancer les deux serveurs**
 
-### 6 — Start the servers
+Ouvrir **deux terminaux** :
 
-Open **two separate terminals** in VSCode (`Ctrl+Shift+\`` to open a new terminal):
+*Terminal 1 — API (port 8080) :*
 
-**Terminal 1 — API server (port 8080):**
+```bash
+# macOS / Linux
+PORT=8080 pnpm --filter @workspace/api-server run dev
 
-```powershell
-pnpm --filter @workspace/api-server run dev
+# Windows PowerShell
+$env:PORT="8080"; pnpm --filter @workspace/api-server run dev
+
+# Windows cmd
+set PORT=8080 && pnpm --filter @workspace/api-server run dev
 ```
 
-**Terminal 2 — Dashboard (port 5000):**
+*Terminal 2 — Frontend (port 5000) :*
 
-```powershell
-$env:PORT="5000"; $env:BASE_PATH="/"; $env:API_PORT="8080"; pnpm --filter @workspace/dashboard run dev
+```bash
+# macOS / Linux
+PORT=5000 BASE_PATH=/ pnpm --filter @workspace/dashboard run dev
+
+# Windows PowerShell
+$env:PORT="5000"; $env:BASE_PATH="/"; pnpm --filter @workspace/dashboard run dev
+
+# Windows cmd
+set PORT=5000 && set BASE_PATH=/ && pnpm --filter @workspace/dashboard run dev
 ```
 
-Then open **http://localhost:5000** in your browser.
+Ouvrir **http://localhost:5000** dans le navigateur.
 
-> The Vite dev server automatically proxies `/api` calls to port 8080 when `REPL_ID` is not set (i.e. outside of Replit).
-
----
-
-### VSCode launch configuration (optional)
-
-Create `.vscode/launch.json` for one-click debugging:
-
-```json
-{
-  "version": "0.2.0",
-  "compounds": [
-    {
-      "name": "Full Stack",
-      "configurations": ["API Server", "Dashboard"]
-    }
-  ],
-  "configurations": [
-    {
-      "name": "API Server",
-      "type": "node",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/artifacts/api-server",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["run", "dev"],
-      "env": {
-        "PORT": "8080"
-      },
-      "envFile": "${workspaceFolder}/artifacts/api-server/.env",
-      "console": "integratedTerminal"
-    },
-    {
-      "name": "Dashboard",
-      "type": "node",
-      "request": "launch",
-      "cwd": "${workspaceFolder}/artifacts/dashboard",
-      "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["run", "dev"],
-      "env": {
-        "PORT": "5000",
-        "BASE_PATH": "/",
-        "API_PORT": "8080"
-      },
-      "console": "integratedTerminal"
-    }
-  ]
-}
-```
+> Le proxy Vite redirige automatiquement les appels `/api` vers le port 8080.
 
 ---
 
-### Project structure
+## Obtenir les clés Roblox OAuth2
+
+1. Aller sur https://create.roblox.com/dashboard/credentials
+2. Créer une nouvelle application **OAuth 2.0**
+3. Ajouter l'URI de redirection : `http://localhost:5000/api/auth/roblox/callback`
+4. Copier le **Client ID** et le **Client Secret** dans `.env`
+
+> En production, remplacer `http://localhost:5000` par ton domaine.
+
+---
+
+## Structure du projet
 
 ```
 /
 ├── artifacts/
-│   ├── api-server/          # Express 5 + Drizzle ORM backend
+│   ├── api-server/          # Express 5 — routes, auth, middleware
 │   │   └── src/
-│   │       ├── app.ts       # Middleware (helmet, rate-limit, CORS, sessions)
-│   │       ├── routes/      # auth, users, planning, games
-│   │       └── index.ts
-│   └── dashboard/           # React 19 + Vite frontend
+│   │       ├── app.ts       # CORS, helmet, rate-limit, cookie-parser
+│   │       ├── routes/      # auth, users, games, planning, teams, groups
+│   │       └── middlewares/ # requireAuth, requireAdmin
+│   └── dashboard/           # React 19 + Vite — interface utilisateur
 │       └── src/
-│           ├── pages/       # dashboard, planning, users, games, revenue
-│           ├── components/  # layout, planning, ui (shadcn)
-│           ├── contexts/    # AuthContext
-│           └── lib/         # role-colors, utils
+│           ├── pages/       # Dashboard, Planning, Users, Games, Revenue
+│           ├── components/  # Layout, Kanban, Calendar, shadcn/ui
+│           └── contexts/    # AuthContext
 ├── lib/
-│   ├── db/                  # Drizzle schema + migrations
-│   └── api-client-react/    # Auto-generated TanStack Query hooks
+│   ├── db/                  # Schéma Drizzle ORM + migrations
+│   ├── api-spec/            # Spécification OpenAPI (source de vérité)
+│   ├── api-client-react/    # Hooks TanStack Query générés automatiquement
+│   └── api-zod/             # Schémas Zod générés automatiquement
+├── docker-compose.yml       # PostgreSQL + Adminer + App
+├── Dockerfile
 └── .env.example
 ```
 
 ---
 
-### Troubleshooting
+## Rôles et accès
 
-| Problem | Solution |
-|---------|----------|
-| `PORT environment variable is required` | Make sure you set `$env:PORT="5000"` before running the dashboard |
-| `ECONNREFUSED localhost:8080` | API server isn't running, check Terminal 1 |
-| Roblox OAuth redirect mismatch | Verify the redirect URI in your Roblox app matches `http://localhost:5000/api/auth/roblox/callback` |
-| Database connection error | Check `DATABASE_URL` in `artifacts/api-server/.env` and that PostgreSQL is running |
-| `pnpm: command not found` | Run `npm install -g pnpm` first |
+Les rôles sont assignés automatiquement à la connexion selon l'ID Roblox :
+
+| Rôle | IDs Roblox | Accès |
+|------|-----------|-------|
+| **Admin** | 454458772, 1428066981, 2001745284 | Dashboard complet |
+| **Collaborator** | 3080402841, 9690401925 | Planning uniquement |
+
+Pour ajouter un utilisateur : modifier les tableaux `HARDCODED_ADMINS` / `HARDCODED_COLLABORATORS` dans `artifacts/api-server/src/routes/auth.ts`.
 
 ---
 
-### Hardcoded authorized users (development)
+## Dépannage
 
-The following Roblox user IDs are pre-authorized (see `artifacts/api-server/src/routes/auth.ts`):
+| Problème | Solution |
+|----------|----------|
+| `PORT environment variable is required` | Définir `PORT=5000` avant de lancer le dashboard |
+| `ECONNREFUSED localhost:8080` | Le serveur API n'est pas démarré (Terminal 1) |
+| Erreur redirect Roblox OAuth | Vérifier que l'URI de redirection dans ton app Roblox est exactement `http://localhost:5000/api/auth/roblox/callback` |
+| Erreur de connexion à la DB | Vérifier `DATABASE_URL` dans `.env` et que PostgreSQL tourne |
+| `pnpm: command not found` | Lancer `npm install -g pnpm` d'abord |
+| Écran blanc sur localhost:5000 | Le serveur API (Terminal 1) doit tourner en même temps |
+| Erreur esbuild sur Windows | Supprimer `node_modules` et relancer `pnpm install` |
 
-- **Admin:** `454458772`, `1428066981`, `2001745284`
-- **Collaborator:** `3080402841`, `9690401925`
+---
 
-To add yourself, add your Roblox numeric user ID to the appropriate array in `auth.ts`.
+## Commandes utiles
+
+```bash
+pnpm install                              # Installer les dépendances
+pnpm --filter @workspace/db run push      # Appliquer le schéma DB
+pnpm --filter @workspace/api-server run build  # Build du serveur API
+pnpm run typecheck                        # Vérification TypeScript
+docker compose up                         # Lancer avec Docker
+docker compose down                       # Arrêter Docker
+docker compose up --build                 # Reconstruire et lancer
+```
