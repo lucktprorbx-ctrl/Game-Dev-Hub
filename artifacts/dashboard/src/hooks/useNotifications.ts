@@ -28,7 +28,8 @@ export function useNotifications() {
     const lastRead = getLastRead();
     const items: NotificationItem[] = [];
 
-    users?.forEach(u => {
+    const usersArray = Array.isArray(users) ? users : [];
+    usersArray.forEach(u => {
       const ts = new Date((u as any).createdAt);
       if (!isNaN(ts.getTime()) && ts > lastRead) {
         items.push({
@@ -42,7 +43,8 @@ export function useNotifications() {
       }
     });
 
-    boards?.forEach(b => {
+    const boardsArray = Array.isArray(boards) ? boards : [];
+    boardsArray.forEach(b => {
       const ts = new Date(b.createdAt);
       if (!isNaN(ts.getTime()) && ts > lastRead) {
         items.push({
