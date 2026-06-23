@@ -1,0 +1,258 @@
+C:\Users\PC\Documents\ProjetSiteWeb\roverse-dashboard>docker compose up
+[+] up 32/32
+ ✔ Image postgres:16-alpine Pulled                                                                                                           11.9s
+ ✔ Image adminer            Pulled                                                                                                            7.2s
+#1 [internal] load local bake definitions
+#1 reading from stdin 577B 0.1s done
+#1 DONE 0.1s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 720B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/node:20-alpine
+#3 ...
+
+#4 [auth] library/node:pull token for registry-1.docker.io
+#4 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/node:20-alpine
+#3 DONE 1.2s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 2B done
+#5 DONE 0.0s
+
+#6 [ 1/15] FROM docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+#6 resolve docker.io/library/node:20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 0.0s done
+#6 sha256:fff4e2c1b189bf87d63ad8bd07f7f4eb288d6f2b6a07a8bb44c60e8c075d2096 445B / 445B 0.1s done
+#6 sha256:b2cbbfe903b0821005780971ddc5892edcc4ce74c5a48d82e1d2b382edac3122 0B / 1.26MB 0.2s
+#6 sha256:4feea04c154301db6f4a496efa397b3db96603b1c009c797cfdde77bea8b3287 0B / 43.23MB 0.2s
+#6 sha256:6a0ac1617861a677b045b7ff88545213ec31c0ff08763195a70a4a5adda577bb 0B / 3.86MB 0.2s
+#6 sha256:b2cbbfe903b0821005780971ddc5892edcc4ce74c5a48d82e1d2b382edac3122 1.26MB / 1.26MB 0.4s done
+#6 sha256:6a0ac1617861a677b045b7ff88545213ec31c0ff08763195a70a4a5adda577bb 1.05MB / 3.86MB 0.8s
+#6 sha256:4feea04c154301db6f4a496efa397b3db96603b1c009c797cfdde77bea8b3287 3.15MB / 43.23MB 0.9s
+#6 sha256:6a0ac1617861a677b045b7ff88545213ec31c0ff08763195a70a4a5adda577bb 3.15MB / 3.86MB 0.9s
+#6 sha256:6a0ac1617861a677b045b7ff88545213ec31c0ff08763195a70a4a5adda577bb 3.86MB / 3.86MB 0.9s done
+#6 extracting sha256:6a0ac1617861a677b045b7ff88545213ec31c0ff08763195a70a4a5adda577bb
+#6 sha256:4feea04c154301db6f4a496efa397b3db96603b1c009c797cfdde77bea8b3287 6.29MB / 43.23MB 1.2s
+#6 extracting sha256:6a0ac1617861a677b045b7ff88545213ec31c0ff08763195a70a4a5adda577bb 0.2s done
+#6 sha256:4feea04c154301db6f4a496efa397b3db96603b1c009c797cfdde77bea8b3287 11.53MB / 43.23MB 1.5s
+#6 sha256:4feea04c154301db6f4a496efa397b3db96603b1c009c797cfdde77bea8b3287 15.73MB / 43.23MB 1.8s
+#6 sha256:4feea04c154301db6f4a496efa397b3db96603b1c009c797cfdde77bea8b3287 19.92MB / 43.23MB 2.1s
+#6 sha256:4feea04c154301db6f4a496efa397b3db96603b1c009c797cfdde77bea8b3287 25.17MB / 43.23MB 2.4s
+#6 sha256:4feea04c154301db6f4a496efa397b3db96603b1c009c797cfdde77bea8b3287 29.36MB / 43.23MB 2.7s
+#6 sha256:4feea04c154301db6f4a496efa397b3db96603b1c009c797cfdde77bea8b3287 32.51MB / 43.23MB 2.9s
+#6 sha256:4feea04c154301db6f4a496efa397b3db96603b1c009c797cfdde77bea8b3287 41.94MB / 43.23MB 3.3s
+#6 sha256:4feea04c154301db6f4a496efa397b3db96603b1c009c797cfdde77bea8b3287 43.23MB / 43.23MB 3.4s done
+#6 extracting sha256:4feea04c154301db6f4a496efa397b3db96603b1c009c797cfdde77bea8b3287
+#6 extracting sha256:4feea04c154301db6f4a496efa397b3db96603b1c009c797cfdde77bea8b3287 2.6s done
+#6 extracting sha256:b2cbbfe903b0821005780971ddc5892edcc4ce74c5a48d82e1d2b382edac3122
+#6 extracting sha256:b2cbbfe903b0821005780971ddc5892edcc4ce74c5a48d82e1d2b382edac3122 0.1s done
+#6 extracting sha256:fff4e2c1b189bf87d63ad8bd07f7f4eb288d6f2b6a07a8bb44c60e8c075d2096 0.0s done
+#6 DONE 6.3s
+
+#7 [ 2/15] WORKDIR /app
+#7 ...
+
+#8 [internal] load build context
+#8 transferring context: 66.69MB 9.9s
+#8 ...
+
+#7 [ 2/15] WORKDIR /app
+#7 DONE 8.2s
+
+#8 [internal] load build context
+#8 ...
+
+#9 [ 3/15] RUN npm install -g pnpm@10
+#9 2.856 
+#9 2.856 added 1 package in 2s
+#9 2.856 
+#9 2.856 1 package is looking for funding
+#9 2.856   run `npm fund` for details
+#9 2.857 npm notice
+#9 2.857 npm notice New major version of npm available! 10.8.2 -> 11.17.0
+#9 2.857 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.17.0
+#9 2.857 npm notice To update run: npm install -g npm@11.17.0
+#9 2.857 npm notice
+#9 ...
+
+#8 [internal] load build context
+#8 transferring context: 72.77MB 19.9s
+#8 ...
+
+#9 [ 3/15] RUN npm install -g pnpm@10
+#9 DONE 6.0s
+
+#8 [internal] load build context
+#8 transferring context: 76.69MB 25.0s
+#8 transferring context: 123.49MB 30.0s
+#8 transferring context: 183.42MB 35.1s
+#8 transferring context: 263.18MB 40.1s
+#8 transferring context: 355.74MB 45.3s
+#8 transferring context: 369.67MB 51.3s
+#8 transferring context: 377.22MB 56.5s done
+#8 DONE 56.9s
+
+#10 [ 4/15] COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+#10 DONE 0.4s
+
+#11 [ 5/15] COPY lib/db/package.json ./lib/db/
+#11 DONE 0.1s
+
+#12 [ 6/15] COPY lib/api-spec/package.json ./lib/api-spec/
+#12 DONE 0.1s
+
+#13 [ 7/15] COPY lib/api-client-react/package.json ./lib/api-client-react/
+#13 DONE 0.1s
+
+#14 [ 8/15] COPY lib/api-zod/package.json ./lib/api-zod/
+#14 DONE 0.1s
+
+#15 [ 9/15] COPY artifacts/api-server/package.json ./artifacts/api-server/
+#15 DONE 0.1s
+
+#16 [10/15] COPY artifacts/dashboard/package.json ./artifacts/dashboard/
+#16 DONE 0.1s
+
+#17 [11/15] COPY scripts/package.json ./scripts/
+#17 DONE 0.1s
+
+#18 [12/15] RUN pnpm install
+#18 0.776 Scope: all 8 workspace projects
+#18 1.472 
+#18 1.472    ╭─────────────────────────────────────────╮
+#18 1.472    │                                         │
+#18 1.472    │   Update available! 10.34.4 → 11.8.0.   │
+#18 1.472    │   Changelog: https://pnpm.io/v/11.8.0   │
+#18 1.472    │    To update, run: pnpm add -g pnpm     │
+#18 1.472    │                                         │
+#18 1.472    ╰─────────────────────────────────────────╯
+#18 1.472 
+#18 1.657 Progress: resolved 0, reused 0, downloaded 1, added 0
+#18 1.999 artifacts/api-server                     |  WARN  deprecated @types/express-rate-limit@6.0.2
+#18 2.683 Progress: resolved 82, reused 0, downloaded 82, added 0
+#18 2.803 artifacts/dashboard                      |  WARN  deprecated recharts@2.15.4
+#18 3.683 Progress: resolved 90, reused 0, downloaded 90, added 0
+#18 4.683 Progress: resolved 92, reused 0, downloaded 92, added 0
+#18 5.722 Progress: resolved 194, reused 0, downloaded 170, added 0
+#18 6.742 Progress: resolved 346, reused 0, downloaded 319, added 0
+#18 7.748 Progress: resolved 509, reused 0, downloaded 479, added 0
+#18 8.813  WARN  1 deprecated subdependencies found: tsconfck@3.1.6
+#18 8.824 Progress: resolved 551, reused 0, downloaded 521, added 0
+#18 8.833 Packages: +521
+#18 8.833 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#18 9.789 Progress: resolved 551, reused 0, downloaded 521, added 521, done
+#18 10.03 .../esbuild@0.28.1/node_modules/esbuild postinstall$ node install.js
+#18 10.11 .../esbuild@0.28.1/node_modules/esbuild postinstall: Done
+#18 11.56 . preinstall$ node -e "const agent = process.env.npm_config_user_agent || ''; if (!agent.startsWith('pnpm')) { process.stderr.write('Use pnpm instead\n'); process.exit(1); }"
+#18 11.60 . preinstall: Done
+#18 11.77  WARN  Issues with peer dependencies found
+#18 11.77 artifacts/dashboard
+#18 11.77 └─┬ @hello-pangea/dnd 16.6.0
+#18 11.77   ├── ✕ unmet peer react@"^16.8.5 || ^17.0.0 || ^18.0.0": found 19.1.0
+#18 11.77   ├── ✕ unmet peer react-dom@"^16.8.5 || ^17.0.0 || ^18.0.0": found 19.1.0
+#18 11.77   ├─┬ react-redux 8.1.3
+#18 11.77   │ ├── ✕ unmet peer @types/react@"^16.8 || ^17.0 || ^18.0": found 19.2.14
+#18 11.77   │ ├── ✕ unmet peer @types/react-dom@"^16.8 || ^17.0 || ^18.0": found 19.2.3
+#18 11.77   │ ├── ✕ unmet peer react@"^16.8 || ^17.0 || ^18.0": found 19.1.0
+#18 11.77   │ └── ✕ unmet peer react-dom@"^16.8 || ^17.0 || ^18.0": found 19.1.0
+#18 11.77   └─┬ use-memo-one 1.1.3
+#18 11.77     └── ✕ unmet peer react@"^16.8.0 || ^17.0.0 || ^18.0.0": found 19.1.0
+#18 11.77 
+#18 11.77 devDependencies:
+#18 11.77 + prettier 3.8.3 (3.8.4 is available)
+#18 11.77 + typescript 5.9.3 (6.0.3 is available)
+#18 11.77 
+#18 11.87 Done in 11.5s using pnpm v10.34.4
+#18 DONE 14.0s
+
+#19 [13/15] COPY . .
+#19 DONE 13.3s
+
+#20 [14/15] RUN pnpm --filter @workspace/db run push || true
+#20 1.706 
+#20 1.706 > @workspace/db@0.0.0 push /app/lib/db
+#20 1.706 > drizzle-kit push --config ./drizzle.config.ts
+#20 1.706 
+#20 1.775 node:internal/modules/cjs/loader:1210
+#20 1.775   throw err;
+#20 1.775   ^
+#20 1.775 
+#20 1.775 Error: Cannot find module '/app/lib/db/node_modules/drizzle-kit/bin.cjs'
+#20 1.775     at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)
+#20 1.775     at Module._load (node:internal/modules/cjs/loader:1038:27)
+#20 1.775     at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:164:12)
+#20 1.775     at node:internal/main/run_main_module:28:49 {
+#20 1.775   code: 'MODULE_NOT_FOUND',
+#20 1.775   requireStack: []
+#20 1.775 }
+#20 1.775 
+#20 1.775 Node.js v20.20.2
+#20 1.805 /app/lib/db:
+#20 1.805  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/db@0.0.0 push: `drizzle-kit push --config ./drizzle.config.ts`
+#20 1.805 Exit status 1
+#20 DONE 1.9s
+
+#21 [15/15] RUN pnpm --filter @workspace/api-server run build
+#21 1.647 
+#21 1.647 > @workspace/api-server@0.0.0 build /app/artifacts/api-server
+#21 1.647 > node ./build.mjs
+#21 1.647 
+#21 1.707 node:internal/modules/esm/resolve:873
+#21 1.707   throw new ERR_MODULE_NOT_FOUND(packageName, fileURLToPath(base), null);
+#21 1.707         ^
+#21 1.707 
+#21 1.707 Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'esbuild' imported from /app/artifacts/api-server/build.mjs
+#21 1.707     at packageResolve (node:internal/modules/esm/resolve:873:9)
+#21 1.707     at moduleResolve (node:internal/modules/esm/resolve:946:18)
+#21 1.707     at defaultResolve (node:internal/modules/esm/resolve:1188:11)
+#21 1.707     at ModuleLoader.defaultResolve (node:internal/modules/esm/loader:708:12)
+#21 1.707     at #cachedDefaultResolve (node:internal/modules/esm/loader:657:25)
+#21 1.707     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+#21 1.707     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+#21 1.707     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+#21 1.707   code: 'ERR_MODULE_NOT_FOUND'
+#21 1.707 }
+#21 1.707 
+#21 1.707 Node.js v20.20.2
+#21 1.736 /app/artifacts/api-server:
+#21 1.736  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/api-server@0.0.0 build: `node ./build.mjs`
+#21 1.736 Exit status 1
+#21 ERROR: process "/bin/sh -c pnpm --filter @workspace/api-server run build" did not complete successfully: exit code: 1
+------
+ > [15/15] RUN pnpm --filter @workspace/api-server run build:
+1.707     at ModuleLoader.resolve (node:internal/modules/esm/loader:640:38)
+1.707     at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:264:38)
+1.707     at ModuleJob._link (node:internal/modules/esm/module_job:168:49) {
+1.707   code: 'ERR_MODULE_NOT_FOUND'
+1.707 }
+1.707 
+1.707 Node.js v20.20.2
+1.736 /app/artifacts/api-server:
+[+] up 32/33NPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/api-server@0.0.0 build: `node ./build.mjs`
+ ✔ Image postgres:16-alpine    Pulled                                                                                                                                               11.9s
+ ✔ Image adminer               Pulled                                                                                                                                                7.2s
+ - Image roverse-dashboard-app Building                                                                                                                                             91.4s
+Dockerfile:22
+
+--------------------
+
+  20 |     
+
+  21 |     RUN pnpm --filter @workspace/db run push || true
+
+  22 | >>> RUN pnpm --filter @workspace/api-server run build
+
+  23 |     
+
+  24 |     EXPOSE 5000 8080
+
+--------------------
+
+failed to solve: process "/bin/sh -c pnpm --filter @workspace/api-server run build" did not complete successfully: exit code: 1
+
+
+What's next:
+    Debug this Compose error with Gordon → docker ai "help me fix this compose error"

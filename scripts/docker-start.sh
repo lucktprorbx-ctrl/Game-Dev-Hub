@@ -1,0 +1,17 @@
+#!/bin/bash
+set -e
+
+echo "Pushing database schema..."
+pnpm --filter @workspace/db run push
+
+echo "Starting API server on port 8080..."
+PORT=8080 NODE_ENV=development pnpm --filter @workspace/api-server run start &
+API_PID=$!
+
+echo "Starting dashboard on port 5000..."
+PORT=5000 BASE_PATH=/ pnpm --filter @workspace/dashboard run dev &
+DASH_PID=$!
+
+wait -n
+kill $API_PID $DASH_PID 2>/dev/null
+wait
