@@ -11,6 +11,7 @@ import {
   Shield,
   Users2,
   X,
+  FileText,
 } from 'lucide-react';
 import { useLogout } from '@workspace/api-client-react';
 import { Button } from '@/components/ui/button';
@@ -211,6 +212,16 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             <LogOut className="h-3.5 w-3.5 mr-2" />
             {t('nav.logout')}
           </Button>
+
+          {/* Footer links */}
+          <div className="flex items-center justify-center gap-2 pt-1">
+            <Link href="/privacy">
+              <span className="flex items-center gap-1 text-[10px] text-muted-foreground/50 hover:text-muted-foreground transition-colors cursor-pointer">
+                <FileText className="w-2.5 h-2.5" />
+                Politique de confidentialité
+              </span>
+            </Link>
+          </div>
         </motion.div>
       </div>
     </>

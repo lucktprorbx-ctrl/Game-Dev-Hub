@@ -1,62 +1,97 @@
+import { Link } from 'wouter';
+import { ArrowLeft } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+
+const sections = [
+  {
+    title: '1. Introduction',
+    body: 'RoCheck est un outil privé de gestion de studio, opéré par RoVerseFR. Cette politique explique comment nous collectons, utilisons et protégeons vos informations.',
+  },
+  {
+    title: '2. Données collectées',
+    body: null,
+    list: [
+      'Votre identifiant Roblox (User ID)',
+      'Votre nom d\'utilisateur et nom d\'affichage Roblox',
+      'L\'URL de votre avatar Roblox',
+    ],
+    note: 'Nous ne collectons ni mot de passe, ni adresse e-mail, ni information financière.',
+  },
+  {
+    title: '3. Utilisation des données',
+    body: null,
+    list: [
+      'Vous authentifier et maintenir votre session',
+      'Afficher votre profil dans le tableau de bord',
+      'Attribuer votre rôle (Admin ou Collaborateur) en fonction de votre ID Roblox',
+    ],
+  },
+  {
+    title: '4. Stockage des données',
+    body: 'Vos informations de profil sont stockées dans une base de données PostgreSQL sécurisée. Les sessions expirent après 7 jours. Vos données ne sont pas partagées avec des tiers.',
+  },
+  {
+    title: '5. Cookies',
+    body: null,
+    cookieNote: true,
+  },
+  {
+    title: '6. Vos droits (RGPD)',
+    body: 'Si vous résidez dans l\'Union Européenne, vous disposez d\'un droit d\'accès, de rectification et de suppression de vos données personnelles. Pour exercer ces droits, contactez l\'équipe RoVerseFR via le groupe Roblox officiel.',
+  },
+  {
+    title: '7. Accès',
+    body: 'Cette plateforme est privée et réservée exclusivement aux membres autorisés de RoVerseFR. L\'accès est accordé uniquement en fonction de votre ID Roblox.',
+  },
+  {
+    title: '8. Contact',
+    body: 'Pour toute question relative à cette politique de confidentialité, contactez l\'équipe RoVerseFR via le groupe Roblox officiel.',
+  },
+];
+
 export default function Privacy() {
   return (
-    <div className="min-h-screen bg-background text-foreground py-16 px-4">
-      <div className="max-w-3xl mx-auto">
-        <h1 className="text-3xl font-bold mb-2">Privacy Policy</h1>
-        <p className="text-muted-foreground mb-10 text-sm">Last updated: June 2025</p>
+    <div className="min-h-screen bg-background text-foreground px-4 py-10 flex flex-col items-center">
+      <div className="w-full max-w-2xl">
+        <Link href="/">
+          <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer mb-8">
+            <ArrowLeft className="w-4 h-4" /> Retour au dashboard
+          </span>
+        </Link>
 
-        <div className="space-y-8 text-sm leading-relaxed text-muted-foreground">
-          <section>
-            <h2 className="text-lg font-semibold text-foreground mb-2">1. Introduction</h2>
-            <p>RoVerse Dashboard ("we", "our", "us") is a private studio operations tool operated by RoVerseFR. This Privacy Policy explains how we collect, use, and protect your information when you use our platform.</p>
-          </section>
+        <h1 className="text-3xl font-bold tracking-tight mb-1">Politique de confidentialité</h1>
+        <p className="text-muted-foreground mb-8 text-sm">Dernière mise à jour : juin 2025</p>
 
-          <section>
-            <h2 className="text-lg font-semibold text-foreground mb-2">2. Data We Collect</h2>
-            <p>When you authenticate with Roblox OAuth 2.0, we collect:</p>
-            <ul className="list-disc ml-5 mt-2 space-y-1">
-              <li>Your Roblox user ID</li>
-              <li>Your Roblox username and display name</li>
-              <li>Your Roblox profile avatar URL</li>
-            </ul>
-            <p className="mt-2">We do not collect passwords, email addresses, or any financial information.</p>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold text-foreground mb-2">3. How We Use Your Data</h2>
-            <p>Your data is used solely to:</p>
-            <ul className="list-disc ml-5 mt-2 space-y-1">
-              <li>Authenticate you and maintain your session</li>
-              <li>Display your profile within the dashboard</li>
-              <li>Assign your role (Admin or Collaborator) based on your Roblox ID</li>
-            </ul>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold text-foreground mb-2">4. Data Storage</h2>
-            <p>Your profile information is stored in a secure PostgreSQL database. Sessions expire after 7 days. We do not share your data with third parties.</p>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold text-foreground mb-2">5. Cookies</h2>
-            <p>We use a single session cookie (<code className="text-xs bg-muted px-1 py-0.5 rounded">session_id</code>) to keep you logged in. This cookie is strictly necessary for the platform to function. We do not use advertising or tracking cookies.</p>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold text-foreground mb-2">6. Your Rights (GDPR)</h2>
-            <p>If you are located in the European Union, you have the right to access, correct, or delete your personal data. To exercise these rights, contact us at the address below.</p>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold text-foreground mb-2">7. Access</h2>
-            <p>This platform is private and restricted to authorized members of RoVerseFR only. Access is granted exclusively based on your Roblox ID.</p>
-          </section>
-
-          <section>
-            <h2 className="text-lg font-semibold text-foreground mb-2">8. Contact</h2>
-            <p>For any questions regarding this Privacy Policy, please contact the RoVerseFR team via the official Roblox group.</p>
-          </section>
+        <div className="space-y-3">
+          {sections.map((s) => (
+            <Card key={s.title}>
+              <CardContent className="p-5 space-y-2">
+                <h2 className="text-sm font-semibold text-foreground">{s.title}</h2>
+                {s.body && <p className="text-sm text-muted-foreground leading-relaxed">{s.body}</p>}
+                {s.list && (
+                  <>
+                    <ul className="list-disc list-inside space-y-1 ml-1 text-sm text-muted-foreground">
+                      {s.list.map((item) => <li key={item}>{item}</li>)}
+                    </ul>
+                    {s.note && <p className="text-sm text-muted-foreground">{s.note}</p>}
+                  </>
+                )}
+                {s.cookieNote && (
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    Nous utilisons un unique cookie de session (
+                    <code className="text-xs bg-muted px-1 py-0.5 rounded font-mono">session_id</code>
+                    ) pour maintenir votre connexion. Ce cookie est strictement nécessaire au fonctionnement de la plateforme.
+                    Nous n'utilisons aucun cookie publicitaire ou de tracking.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          ))}
         </div>
+
+        <p className="text-xs text-muted-foreground/40 text-center mt-10">
+          RoVerseFR · RoCheck Dashboard
+        </p>
       </div>
     </div>
   );

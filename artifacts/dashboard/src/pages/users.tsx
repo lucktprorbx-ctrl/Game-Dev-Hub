@@ -648,6 +648,9 @@ export default function Users() {
 
   const editingUser = users?.find(u => u.id === selectedUser);
 
+  const adminCount = users?.filter(u => u.role === 'admin').length ?? 0;
+  const collaboratorCount = users?.filter(u => u.role === 'collaborator').length ?? 0;
+
   return (
     <PageTransition>
       <motion.div
@@ -656,7 +659,14 @@ export default function Users() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
       >
-        <h1 className="text-3xl font-bold tracking-tight">{t('nav.users')}</h1>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">{t('nav.users')}</h1>
+          {!isLoading && users && (
+            <p className="text-sm text-muted-foreground mt-1">
+              {users.length} member{users.length !== 1 ? 's' : ''} · {adminCount} admin{adminCount !== 1 ? 's' : ''} · {collaboratorCount} collaborateur{collaboratorCount !== 1 ? 's' : ''}
+            </p>
+          )}
+        </div>
         {isAdmin && (
           <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
             <Button onClick={() => { setAddDialogOpen(true); setAddError(''); }} className="gap-2">
@@ -665,6 +675,50 @@ export default function Users() {
           </motion.div>
         )}
       </motion.div>
+
+      {/* Stats cards */}
+      {!isLoading && users && users.length > 0 && (
+        <motion.div
+          className="grid grid-cols-3 gap-3 mb-6"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05, type: 'spring', stiffness: 200, damping: 22 }}
+        >
+          <Card className="border-border/50">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-muted/60 flex items-center justify-center flex-shrink-0">
+                <Users2 className="w-4 h-4 text-muted-foreground" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold leading-none">{users.length}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">Total</div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-red-500/20 bg-red-500/5">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center flex-shrink-0">
+                <Shield className="w-4 h-4 text-red-400" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold leading-none text-red-400">{adminCount}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">Admins</div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border-blue-500/20 bg-blue-500/5">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                <Users2 className="w-4 h-4 text-blue-400" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold leading-none text-blue-400">{collaboratorCount}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">Collaborateurs</div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       <Tabs defaultValue="members">
         <TabsList className="mb-4">

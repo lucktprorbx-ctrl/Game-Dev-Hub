@@ -5,7 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { PageTransition } from '@/components/ui/page-transition';
 import { useAuth } from '@/contexts/AuthContext';
-import { Users, Columns2, CalendarDays, Shield, ChevronRight, Eye, Lock, Gamepad2 } from 'lucide-react';
+import { Users, Columns2, CalendarDays, Shield, Eye, Gamepad2, Lock, TrendingUp } from 'lucide-react';
 import { motion, animate, AnimatePresence } from 'framer-motion';
 import { Link } from 'wouter';
 import { useTranslation } from 'react-i18next';
@@ -48,8 +48,6 @@ export default function Dashboard() {
   const { data: boards, isLoading: boardsLoading } = useListBoards();
   const { data: group, isLoading: groupLoading } = useGetGroupInfo(GROUP_ID);
 
-  const [groupExpanded, setGroupExpanded] = useState(false);
-
   const isLoading = usersLoading || boardsLoading;
 
   const adminCount = users?.filter(u => u.role === 'admin').length ?? 0;
@@ -75,6 +73,9 @@ export default function Dashboard() {
       accent: 'hover:border-indigo-500/30 hover:shadow-indigo-500/5',
     },
   ];
+
+  const publicGames = group?.games.filter(g => !g.isPrivate) ?? [];
+  const totalPlaying = publicGames.reduce((s, g) => s + (g.playing ?? 0), 0);
 
   return (
     <PageTransition>
@@ -102,8 +103,8 @@ export default function Dashboard() {
 
         {/* Stats row */}
         {isLoading ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            {[1, 2].map((i) => (
+          <div className="grid gap-4 md:grid-cols-3">
+            {[1, 2, 3].map((i) => (
               <Card key={i}>
                 <CardHeader className="pb-2"><Skeleton className="h-4 w-[100px]" /></CardHeader>
                 <CardContent>
@@ -114,7 +115,7 @@ export default function Dashboard() {
             ))}
           </div>
         ) : (
-          <motion.div variants={container} initial="hidden" animate="show" className="grid gap-4 md:grid-cols-2">
+          <motion.div variants={container} initial="hidden" animate="show" className="grid gap-4 md:grid-cols-3">
             {stats.map((stat) => (
               <motion.div key={stat.label} variants={item}>
                 <motion.div
@@ -143,6 +144,39 @@ export default function Dashboard() {
                 </motion.div>
               </motion.div>
             ))}
+
+            {/* Live players stat (from group data) */}
+            {!groupLoading && group && (
+              <motion.div variants={item}>
+                <motion.div
+                  whileHover={{ y: -3, scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                >
+                  <Card className="transition-all duration-200 hover:shadow-lg hover:border-emerald-500/30 hover:shadow-emerald-500/5">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium text-muted-foreground">Live Players</CardTitle>
+                      <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center relative">
+                        <TrendingUp className="h-4 w-4 text-emerald-400" />
+                        <motion.span
+                          className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400"
+                          animate={{ scale: [1, 1.4, 1], opacity: [1, 0.5, 1] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                        />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-3xl font-bold">
+                        <CountUp to={totalPlaying} />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        across {group.games.filter(g => !g.isPrivate).length} public game{group.games.filter(g => !g.isPrivate).length !== 1 ? 's' : ''}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </motion.div>
+            )}
           </motion.div>
         )}
 
@@ -158,25 +192,26 @@ export default function Dashboard() {
           </div>
 
           {groupLoading ? (
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-center gap-4">
-                  <Skeleton className="w-14 h-14 rounded-xl flex-shrink-0" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-5 w-40" />
-                    <Skeleton className="h-3 w-24" />
+            <div className="space-y-3">
+              <Card>
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-4">
+                    <Skeleton className="w-14 h-14 rounded-xl flex-shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-5 w-40" />
+                      <Skeleton className="h-3 w-24" />
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {[1, 2, 3].map(i => <Skeleton key={i} className="h-28 rounded-xl" />)}
+              </div>
+            </div>
           ) : group ? (
-            <Card className="overflow-hidden">
-              <motion.button
-                className="w-full text-left"
-                onClick={() => setGroupExpanded(!groupExpanded)}
-                whileHover={{ backgroundColor: 'hsl(var(--muted)/0.3)' }}
-                whileTap={{ scale: 0.995 }}
-              >
+            <div className="space-y-4">
+              {/* Group info card */}
+              <Card>
                 <CardContent className="p-5">
                   <div className="flex items-center gap-4">
                     {group.thumbnailUrl ? (
@@ -193,111 +228,100 @@ export default function Dashboard() {
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
+                      <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-semibold text-base truncate">{group.name}</h3>
                         <Badge variant="secondary" className="text-xs flex-shrink-0">
                           {formatNumber(group.memberCount)} members
                         </Badge>
                       </div>
                       {group.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-1">{group.description}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2">{group.description}</p>
                       )}
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {group.games.length > 0 ? `${group.games.length} game${group.games.length !== 1 ? 's' : ''}` : 'No public games yet'}
-                      </p>
                     </div>
-                    <motion.span
-                      animate={{ rotate: groupExpanded ? 90 : 0 }}
-                      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                      className="text-muted-foreground flex-shrink-0"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </motion.span>
                   </div>
                 </CardContent>
-              </motion.button>
+              </Card>
 
-              <AnimatePresence>
-                {groupExpanded && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="border-t border-border">
-                      {group.games.length === 0 ? (
-                        <div className="px-5 py-8 text-center">
-                          <Gamepad2 className="w-8 h-8 mx-auto mb-2 text-muted-foreground/30" />
-                          <p className="text-sm text-muted-foreground">No public games yet.</p>
-                          <p className="text-xs text-muted-foreground/60 mt-1">
-                            Games will appear here once published on Roblox.
-                          </p>
-                        </div>
-                      ) : (
-                        <motion.div
-                          className="divide-y divide-border"
-                          initial="hidden"
-                          animate="show"
-                          variants={{ hidden: {}, show: { transition: { staggerChildren: 0.05 } } }}
-                        >
-                          {group.games.map((game) => (
-                            <motion.div
-                              key={game.universeId}
-                              variants={{ hidden: { opacity: 0, x: -8 }, show: { opacity: 1, x: 0 } }}
-                              className="px-5 py-4"
-                            >
-                              <div className="flex items-start gap-3">
-                                {game.thumbnailUrl ? (
-                                  <motion.img
-                                    src={game.thumbnailUrl}
-                                    alt={game.name}
-                                    className="w-12 h-12 rounded-lg object-cover bg-muted flex-shrink-0"
-                                    whileHover={{ scale: 1.05 }}
-                                  />
-                                ) : (
-                                  <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                                    <Gamepad2 className="w-6 h-6 text-muted-foreground/40" />
-                                  </div>
-                                )}
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className="font-medium text-sm truncate">{game.name}</span>
-                                    {game.isPrivate && (
-                                      <Badge variant="outline" className="text-[10px] h-4 px-1.5 border-border/60 text-muted-foreground flex-shrink-0">
-                                        <Lock className="w-2.5 h-2.5 mr-0.5" /> Private
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  {!game.isPrivate && (
-                                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                                      <span className="flex items-center gap-1">
-                                        <motion.span
-                                          className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"
-                                          animate={{ scale: [1, 1.3, 1], opacity: [1, 0.6, 1] }}
-                                          transition={{ duration: 2, repeat: Infinity }}
-                                        />
-                                        <span><strong className="text-foreground">{formatNumber(game.playing ?? 0)}</strong> playing</span>
-                                      </span>
-                                      <span><strong className="text-foreground">{formatNumber(game.visits ?? 0)}</strong> visits</span>
-                                      <span><strong className="text-foreground">{formatNumber(game.favoritedCount ?? 0)}</strong> favorites</span>
-                                    </div>
-                                  )}
-                                  {game.isPrivate && (
-                                    <p className="text-xs text-muted-foreground">Stats available once the game is public.</p>
-                                  )}
-                                </div>
+              {/* Games grid */}
+              {group.games.length > 0 && (
+                <motion.div
+                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
+                  initial="hidden"
+                  animate="show"
+                  variants={{ hidden: {}, show: { transition: { staggerChildren: 0.07 } } }}
+                >
+                  {group.games.map((game) => (
+                    <motion.div
+                      key={game.universeId}
+                      variants={{ hidden: { opacity: 0, y: 10 }, show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 260, damping: 22 } } }}
+                      whileHover={{ y: -3, scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Card className={`overflow-hidden h-full transition-all duration-200 hover:shadow-md ${game.isPrivate ? 'opacity-60' : 'hover:border-primary/20 hover:shadow-primary/5'}`}>
+                        {game.thumbnailUrl ? (
+                          <div className="relative overflow-hidden">
+                            <img
+                              src={game.thumbnailUrl}
+                              alt={game.name}
+                              className="w-full h-32 object-cover"
+                            />
+                            {game.isPrivate && (
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                <Badge variant="outline" className="bg-black/60 border-white/20 text-white text-xs gap-1">
+                                  <Lock className="w-3 h-3" /> Private
+                                </Badge>
                               </div>
-                            </motion.div>
-                          ))}
-                        </motion.div>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </Card>
+                            )}
+                            {!game.isPrivate && (
+                              <div className="absolute top-2 right-2">
+                                <Badge className="bg-black/60 border-0 text-white text-xs gap-1 backdrop-blur-sm">
+                                  <motion.span
+                                    className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"
+                                    animate={{ scale: [1, 1.3, 1], opacity: [1, 0.6, 1] }}
+                                    transition={{ duration: 2, repeat: Infinity }}
+                                  />
+                                  {formatNumber(game.playing ?? 0)} playing
+                                </Badge>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="w-full h-32 bg-muted flex items-center justify-center relative">
+                            <Gamepad2 className="w-8 h-8 text-muted-foreground/30" />
+                            {game.isPrivate && (
+                              <div className="absolute inset-0 flex items-center justify-center">
+                                <Badge variant="outline" className="text-xs gap-1">
+                                  <Lock className="w-3 h-3" /> Private
+                                </Badge>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        <CardContent className="p-3">
+                          <div className="font-medium text-sm truncate mb-1">{game.name}</div>
+                          {!game.isPrivate ? (
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <span><strong className="text-foreground">{formatNumber(game.visits ?? 0)}</strong> visits</span>
+                              <span><strong className="text-foreground">{formatNumber(game.favoritedCount ?? 0)}</strong> fav</span>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">Stats available once public</p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
+
+              {group.games.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-10 text-center border border-dashed border-border/50 rounded-xl">
+                  <Gamepad2 className="w-8 h-8 mx-auto mb-2 text-muted-foreground/30" />
+                  <p className="text-sm text-muted-foreground">No public games yet.</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">Games will appear here once published on Roblox.</p>
+                </div>
+              )}
+            </div>
           ) : (
             <Card>
               <CardContent className="p-5 text-center text-sm text-muted-foreground">
