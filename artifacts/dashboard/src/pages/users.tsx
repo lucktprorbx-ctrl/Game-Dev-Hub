@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import {
   Shield, Users2, UserPlus, Trash2, AlertCircle, CheckCircle2, Ban, Plus, X, Palette,
-  MessageSquare, Edit2, ChevronDown, ChevronUp,
+  MessageSquare, Edit2, ChevronDown, ChevronUp, Search,
 } from 'lucide-react';
 import { getSubroleClasses } from '@/lib/role-colors';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -790,10 +790,27 @@ export default function Users() {
     setCustomGroup('');
   };
 
+  const [search, setSearch] = useState('');
+  const [filterRole, setFilterRole] = useState<'all' | 'admin' | 'collaborator'>('all');
+  const [filterSubrole, setFilterSubrole] = useState('');
+
   const editingUser = users?.find(u => u.id === selectedUser);
 
   const adminCount = users?.filter(u => u.role === 'admin').length ?? 0;
   const collaboratorCount = users?.filter(u => u.role === 'collaborator').length ?? 0;
+
+  const filteredUsers = (users as UserListUser[] | undefined)?.filter(u => {
+    const q = search.toLowerCase().trim();
+    if (q) {
+      const name = (u.robloxDisplayName || u.robloxUsername || '').toLowerCase();
+      const username = (u.robloxUsername || '').toLowerCase();
+      const discord = (u.discordUsername || '').toLowerCase();
+      if (!name.includes(q) && !username.includes(q) && !discord.includes(q)) return false;
+    }
+    if (filterRole !== 'all' && u.role !== filterRole) return false;
+    if (filterSubrole && !(u.subroles || []).some(sr => sr.toLowerCase().includes(filterSubrole.toLowerCase()))) return false;
+    return true;
+  });
 
   return (
     <PageTransition>
@@ -889,8 +906,92 @@ export default function Users() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, type: 'spring', stiffness: 200, damping: 22 }}
-            className="space-y-2"
+            className="space-y-3"
           >
+            {/* Search + filter bar */}
+            {!isLoading && (users?.length ?? 0) > 0 && (
+              <div className="flex flex-col sm:flex-row gap-2">
+                {/* Search input */}
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50 pointer-events-none" />
+                  <Input
+                    placeholder={t('users.searchPlaceholder')}
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    className="pl-9 h-9 text-sm bg-muted/20"
+                  />
+                  {search && (
+                    <button
+                      onClick={() => setSearch('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Role filter pills */}
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {(['all', 'admin', 'collaborator'] as const).map(r => (
+                    <motion.button
+                      key={r}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setFilterRole(r)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors",
+                        filterRole === r
+                          ? r === 'admin'
+                            ? 'bg-red-500/20 text-red-400 border-red-500/40'
+                            : r === 'collaborator'
+                              ? 'bg-blue-500/20 text-blue-400 border-blue-500/40'
+                              : 'bg-muted text-foreground border-border'
+                          : 'text-muted-foreground border-border/40 hover:border-border hover:text-foreground'
+                      )}
+                    >
+                      {r === 'all' ? t('users.filterAll') : r === 'admin' ? 'Admin' : t('users.collaboratorLabel')}
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Subrole filter chips */}
+            {!isLoading && (users?.length ?? 0) > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {SUBROLE_OPTIONS.map(sr => (
+                  <motion.button
+                    key={sr}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setFilterSubrole(filterSubrole === sr ? '' : sr)}
+                    className={cn(
+                      "text-[11px] px-2 py-0.5 rounded-full border transition-colors",
+                      filterSubrole === sr
+                        ? getSubroleClasses(sr)
+                        : 'border-border/40 text-muted-foreground/60 hover:border-border hover:text-muted-foreground'
+                    )}
+                  >
+                    {sr}
+                  </motion.button>
+                ))}
+                {filterSubrole && (
+                  <button
+                    onClick={() => setFilterSubrole('')}
+                    className="text-[11px] px-2 py-0.5 rounded-full border border-border/40 text-muted-foreground/50 hover:text-muted-foreground flex items-center gap-1"
+                  >
+                    <X className="w-2.5 h-2.5" /> {t('users.clearFilter')}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Results count when filtering */}
+            {!isLoading && (search || filterRole !== 'all' || filterSubrole) && (
+              <p className="text-xs text-muted-foreground">
+                {filteredUsers?.length ?? 0} {t('users.resultsFound')}
+              </p>
+            )}
+
+            {/* User list */}
             {isLoading ? (
               [1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)
             ) : users?.length === 0 ? (
@@ -898,9 +999,20 @@ export default function Users() {
                 <Users2 className="w-10 h-10 mx-auto mb-3 opacity-30" />
                 <p className="font-medium text-sm">{t('users.noUsersYet')}</p>
               </div>
+            ) : filteredUsers?.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground border border-dashed border-border/40 rounded-xl">
+                <Search className="w-8 h-8 mx-auto mb-2 opacity-25" />
+                <p className="font-medium text-sm">{t('users.noResults')}</p>
+                <button
+                  onClick={() => { setSearch(''); setFilterRole('all'); setFilterSubrole(''); }}
+                  className="text-xs text-primary hover:underline mt-1"
+                >
+                  {t('users.clearFilters')}
+                </button>
+              </div>
             ) : (
               <AnimatePresence initial={false}>
-                {(users as UserListUser[])?.map((user, i) => (
+                {filteredUsers?.map((user, i) => (
                   <UserCard
                     key={user.id}
                     user={user}
