@@ -1,0 +1,126 @@
+app-1       | set: usage: set [-abefhkmnptuvxBCEHPT] [-o option-name] [--] [-] [arg ...]
+app-1       | scripts/docker-start.sh: line 3: $'\r': command not found
+app-1       | Pushing database schema...
+adminer-1   | [Tue Jun 23 11:30:47 2026] PHP 8.4.22 Development Server (http://[::]:8080) started
+" script    |  ERR_PNPM_RECURSIVE_RUN_NO_SCRIPT  None of the selected packages has a "push
+app-1       | scripts/docker-start.sh: line 6: $'\r': command not found
+app-1       | Starting API server on port 8080...
+app-1       | scripts/docker-start.sh: line 8: $'\r': command not found
+app-1       | scripts/docker-start.sh: line 10: $'\r': command not found
+app-1       | Starting dashboard on port 5000...
+app-1       | scripts/docker-start.sh: line 12: $'\r': command not found
+app-1       | scripts/docker-start.sh: line 14: $'\r': command not found
+: invalid optionripts/docker-start.sh: line 15: wait: -
+app-1       | wait: usage: wait [-fn] [-p var] [id ...]
+app-1       | scripts/docker-start.sh: line 17: $'wait\r': command not found
+app-1 exited with code 127 (restarting)
+: invalid optionripts/docker-start.sh: line 2: set: -
+app-1       | set: usage: set [-abefhkmnptuvxBCEHPT] [-o option-name] [--] [-] [arg ...]
+app-1       | scripts/docker-start.sh: line 3: $'\r': command not found
+app-1       | Pushing database schema...
+" script    |  ERR_PNPM_RECURSIVE_RUN_NO_SCRIPT  None of the selected packages has a "push
+app-1       | scripts/docker-start.sh: line 6: $'\r': command not found
+app-1       | Starting API server on port 8080...
+app-1       | scripts/docker-start.sh: line 8: $'\r': command not found
+app-1       | scripts/docker-start.sh: line 10: $'\r': command not found
+app-1       | Starting dashboard on port 5000...
+app-1       | scripts/docker-start.sh: line 12: $'\r': command not found
+app-1       | scripts/docker-start.sh: line 14: $'\r': command not found
+: invalid optionripts/docker-start.sh: line 15: wait: -
+app-1       | wait: usage: wait [-fn] [-p var] [id ...]
+app-1       | scripts/docker-start.sh: line 17: $'wait\r': command not found
+app-1 exited with code 127 (restarting)
+: invalid optionripts/docker-start.sh: line 2: set: -
+app-1       | set: usage: set [-abefhkmnptuvxBCEHPT] [-o option-name] [--] [-] [arg ...]
+app-1       | scripts/docker-start.sh: line 3: $'\r': command not found
+app-1       | Pushing database schema...
+" script    |  ERR_PNPM_RECURSIVE_RUN_NO_SCRIPT  None of the selected packages has a "push
+app-1       | scripts/docker-start.sh: line 6: $'\r': command not found
+app-1       | Starting API server on port 8080...
+app-1       | scripts/docker-start.sh: line 8: $'\r': command not found
+app-1       | scripts/docker-start.sh: line 10: $'\r': command not found
+app-1       | Starting dashboard on port 5000...
+app-1       | scripts/docker-start.sh: line 12: $'\r': command not found
+app-1       | scripts/docker-start.sh: line 14: $'\r': command not found
+: invalid optionripts/docker-start.sh: line 15: wait: -
+app-1       | wait: usage: wait [-fn] [-p var] [id ...]
+app-1       | scripts/docker-start.sh: line 17: $'wait\r': command not found
+app-1 exited with code 127 (restarting)
+: invalid optionripts/docker-start.sh: line 2: set: -
+app-1       | set: usage: set [-abefhkmnptuvxBCEHPT] [-o option-name] [--] [-] [arg ...]
+app-1       | scripts/docker-start.sh: line 3: $'\r': command not found
+app-1       | Pushing database schema...
+" script    |  ERR_PNPM_RECURSIVE_RUN_NO_SCRIPT  None of the selected packages has a "push
+app-1       | scripts/docker-start.sh: line 6: $'\r': command not found
+app-1       | Starting API server on port 8080...
+app-1       | scripts/docker-start.sh: line 8: $'\r': command not found
+app-1       | scripts/docker-start.sh: line 10: $'\r': command not found
+app-1       | Starting dashboard on port 5000...
+app-1       | scripts/docker-start.sh: line 12: $'\r': command not found
+app-1       | scripts/docker-start.sh: line 14: $'\r': command not found
+: invalid optionripts/docker-start.sh: line 15: wait: -
+app-1       | wait: usage: wait [-fn] [-p var] [id ...]
+app-1       | scripts/docker-start.sh: line 17: $'wait\r': command not found
+app-1 exited with code 127 (restarting)
+: invalid optionripts/docker-start.sh: line 2: set: -
+app-1       | set: usage: set [-abefhkmnptuvxBCEHPT] [-o option-name] [--] [-] [arg ...]
+app-1       | scripts/docker-start.sh: line 3: $'\r': command not found
+app-1       | Pushing database schema...
+" script    |  ERR_PNPM_RECURSIVE_RUN_NO_SCRIPT  None of the selected packages has a "push
+app-1       | scripts/docker-start.sh: line 6: $'\r': command not found
+app-1       | Starting API server on port 8080...
+app-1       | scripts/docker-start.sh: line 8: $'\r': command not found
+app-1       | scripts/docker-start.sh: line 10: $'\r': command not found
+app-1       | Starting dashboard on port 5000...
+app-1       | scripts/docker-start.sh: line 12: $'\r': command not found
+app-1       | scripts/docker-start.sh: line 14: $'\r': command not found
+: invalid optionripts/docker-start.sh: line 15: wait: -
+app-1       | wait: usage: wait [-fn] [-p var] [id ...]
+app-1       | scripts/docker-start.sh: line 17: $'wait\r': command not found
+app-1 exited with code 127 (restarting)
+: invalid optionripts/docker-start.sh: line 2: set: -
+app-1       | set: usage: set [-abefhkmnptuvxBCEHPT] [-o option-name] [--] [-] [arg ...]
+app-1       | scripts/docker-start.sh: line 3: $'\r': command not found
+app-1       | Pushing database schema...
+" script    |  ERR_PNPM_RECURSIVE_RUN_NO_SCRIPT  None of the selected packages has a "push
+app-1       | scripts/docker-start.sh: line 6: $'\r': command not found
+app-1       | Starting API server on port 8080...
+app-1       | scripts/docker-start.sh: line 8: $'\r': command not found
+app-1       | scripts/docker-start.sh: line 10: $'\r': command not found
+app-1       | Starting dashboard on port 5000...
+app-1       | scripts/docker-start.sh: line 12: $'\r': command not found
+app-1       | scripts/docker-start.sh: line 14: $'\r': command not found
+: invalid optionripts/docker-start.sh: line 15: wait: -
+app-1       | wait: usage: wait [-fn] [-p var] [id ...]
+app-1       | scripts/docker-start.sh: line 17: $'wait\r': command not found
+app-1 exited with code 127 (restarting)
+: invalid optionripts/docker-start.sh: line 2: set: -
+app-1       | set: usage: set [-abefhkmnptuvxBCEHPT] [-o option-name] [--] [-] [arg ...]
+app-1       | scripts/docker-start.sh: line 3: $'\r': command not found
+app-1       | Pushing database schema...
+" script    |  ERR_PNPM_RECURSIVE_RUN_NO_SCRIPT  None of the selected packages has a "push
+app-1       | scripts/docker-start.sh: line 6: $'\r': command not found
+app-1       | Starting API server on port 8080...
+app-1       | scripts/docker-start.sh: line 8: $'\r': command not found
+app-1       | scripts/docker-start.sh: line 10: $'\r': command not found
+app-1       | Starting dashboard on port 5000...
+app-1       | scripts/docker-start.sh: line 12: $'\r': command not found
+app-1       | scripts/docker-start.sh: line 14: $'\r': command not found
+: invalid optionripts/docker-start.sh: line 15: wait: -
+app-1       | wait: usage: wait [-fn] [-p var] [id ...]
+app-1       | scripts/docker-start.sh: line 17: $'wait\r': command not found
+app-1 exited with code 127 (restarting)
+: invalid optionripts/docker-start.sh: line 2: set: -
+app-1       | set: usage: set [-abefhkmnptuvxBCEHPT] [-o option-name] [--] [-] [arg ...]
+app-1       | scripts/docker-start.sh: line 3: $'\r': command not found
+app-1       | Pushing database schema...
+" script    |  ERR_PNPM_RECURSIVE_RUN_NO_SCRIPT  None of the selected packages has a "push
+app-1       | scripts/docker-start.sh: line 6: $'\r': command not found
+app-1       | Starting API server on port 8080...
+app-1       | scripts/docker-start.sh: line 8: $'\r': command not found
+app-1       | scripts/docker-start.sh: line 10: $'\r': command not found
+app-1       | Starting dashboard on port 5000...
+app-1       | scripts/docker-start.sh: line 12: $'\r': command not found
+app-1       | scripts/docker-start.sh: line 14: $'\r': command not found
+: invalid optionripts/docker-start.sh: line 15: wait: -
+app-1       | wait: usage: wait [-fn] [-p var] [id ...]

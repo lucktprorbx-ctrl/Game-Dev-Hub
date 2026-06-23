@@ -8,6 +8,8 @@ RUN npm install -g pnpm@10
 
 COPY . .
 
+RUN sed -i 's/\r//' scripts/docker-start.sh
+
 RUN pnpm install --frozen-lockfile
 
 RUN pnpm --filter @workspace/api-server run build
