@@ -8,6 +8,7 @@ export const SUBROLE_COLORS: Record<string, string> = {
   Animator: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30',
   'Sound Designer': 'bg-teal-500/20 text-teal-400 border border-teal-500/30',
   'Game Designer': 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30',
+  'Content Creator Manager': 'bg-rose-500/20 text-rose-400 border border-rose-500/30',
 };
 
 export const SUBROLE_DOT_COLORS: Record<string, string> = {
@@ -20,6 +21,7 @@ export const SUBROLE_DOT_COLORS: Record<string, string> = {
   Animator: 'bg-yellow-400',
   'Sound Designer': 'bg-teal-400',
   'Game Designer': 'bg-indigo-400',
+  'Content Creator Manager': 'bg-rose-400',
 };
 
 export function getSubroleClasses(sr: string): string {
@@ -40,6 +42,7 @@ export const SUBROLE_AVATAR_COLORS: Record<string, string> = {
   Animator: 'bg-yellow-500/20 text-yellow-400',
   'Sound Designer': 'bg-teal-500/20 text-teal-400',
   'Game Designer': 'bg-indigo-500/20 text-indigo-400',
+  'Content Creator Manager': 'bg-rose-500/20 text-rose-400',
 };
 
 export function getAvatarClasses(role: string, subroles: string[]): string {

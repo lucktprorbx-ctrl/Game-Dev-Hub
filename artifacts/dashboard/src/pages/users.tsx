@@ -47,7 +47,7 @@ function SubroleBadge({ subrole }: { subrole: string }) {
   );
 }
 
-const SUBROLE_OPTIONS = ['Scripter', 'UI Maker', 'Builder', 'Modeler', 'Animator', 'Sound Designer', 'Game Designer', 'Investor'];
+const SUBROLE_OPTIONS = ['Scripter', 'UI Maker', 'Builder', 'Modeler', 'Animator', 'Sound Designer', 'Game Designer', 'Investor', 'Content Creator Manager'];
 const GROUP_OPTIONS = ['Core Team', 'Dev Team', 'Art Team', 'Marketing Team', 'Investors'];
 
 const TEAM_COLORS = [
