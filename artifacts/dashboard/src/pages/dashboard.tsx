@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { PageTransition } from '@/components/ui/page-transition';
 import { useAuth } from '@/contexts/AuthContext';
 import { Users, Columns2, CalendarDays, Shield, Eye, Gamepad2, Lock, TrendingUp } from 'lucide-react';
-import { motion, animate, AnimatePresence } from 'framer-motion';
+import { motion, animate } from 'framer-motion';
 import { Link } from 'wouter';
 import { useTranslation } from 'react-i18next';
 
@@ -44,19 +44,22 @@ export default function Dashboard() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const isAdmin = user?.role === 'admin';
-  const { data: users, isLoading: usersLoading } = useListUsers();
-  const { data: boards, isLoading: boardsLoading } = useListBoards();
+  const { data: usersRaw, isLoading: usersLoading } = useListUsers();
+  const { data: boardsRaw, isLoading: boardsLoading } = useListBoards();
   const { data: group, isLoading: groupLoading } = useGetGroupInfo(GROUP_ID);
+
+  const users = Array.isArray(usersRaw) ? usersRaw : [];
+  const boards = Array.isArray(boardsRaw) ? boardsRaw : [];
 
   const isLoading = usersLoading || boardsLoading;
 
-  const adminCount = users?.filter(u => u.role === 'admin').length ?? 0;
-  const collaboratorCount = users?.filter(u => u.role === 'collaborator').length ?? 0;
+  const adminCount = users.filter(u => u.role === 'admin').length;
+  const collaboratorCount = users.filter(u => u.role === 'collaborator').length;
 
   const stats = [
     {
       label: t('dashboard.teamMembers'),
-      value: users?.length ?? 0,
+      value: users.length,
       sub: `${t('dashboard.admins', { count: adminCount })} · ${t('dashboard.collaborators', { count: collaboratorCount })}`,
       icon: Users,
       iconColor: 'text-amber-400',
@@ -65,8 +68,8 @@ export default function Dashboard() {
     },
     {
       label: t('dashboard.planningBoards'),
-      value: boards?.length ?? 0,
-      sub: (boards?.length ?? 0) === 0 ? t('dashboard.noBoardsYet') : t('dashboard.activeBoards', { count: boards?.length ?? 0 }),
+      value: boards.length,
+      sub: boards.length === 0 ? t('dashboard.noBoardsYet') : t('dashboard.activeBoards', { count: boards.length }),
       icon: Columns2,
       iconColor: 'text-indigo-400',
       bg: 'bg-indigo-500/10',
@@ -145,7 +148,7 @@ export default function Dashboard() {
               </motion.div>
             ))}
 
-            {/* Live players stat (from group data) */}
+            {/* Live players stat */}
             {!groupLoading && group && (
               <motion.div variants={item}>
                 <motion.div
@@ -155,7 +158,7 @@ export default function Dashboard() {
                 >
                   <Card className="transition-all duration-200 hover:shadow-lg hover:border-emerald-500/30 hover:shadow-emerald-500/5">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-sm font-medium text-muted-foreground">Live Players</CardTitle>
+                      <CardTitle className="text-sm font-medium text-muted-foreground">{t('dashboard.livePlayers')}</CardTitle>
                       <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center relative">
                         <TrendingUp className="h-4 w-4 text-emerald-400" />
                         <motion.span
@@ -170,7 +173,7 @@ export default function Dashboard() {
                         <CountUp to={totalPlaying} />
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
-                        across {group.games.filter(g => !g.isPrivate).length} public game{group.games.filter(g => !g.isPrivate).length !== 1 ? 's' : ''}
+                        {t('dashboard.acrossGames', { count: publicGames.length })}
                       </p>
                     </CardContent>
                   </Card>
@@ -210,7 +213,6 @@ export default function Dashboard() {
             </div>
           ) : group ? (
             <div className="space-y-4">
-              {/* Group info card */}
               <Card>
                 <CardContent className="p-5">
                   <div className="flex items-center gap-4">
@@ -231,7 +233,7 @@ export default function Dashboard() {
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-semibold text-base truncate">{group.name}</h3>
                         <Badge variant="secondary" className="text-xs flex-shrink-0">
-                          {formatNumber(group.memberCount)} members
+                          {formatNumber(group.memberCount)} {t('dashboard.members', { count: group.memberCount })}
                         </Badge>
                       </div>
                       {group.description && (
@@ -242,7 +244,6 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
 
-              {/* Games grid */}
               {group.games.length > 0 && (
                 <motion.div
                   className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"
@@ -260,15 +261,11 @@ export default function Dashboard() {
                       <Card className={`overflow-hidden h-full transition-all duration-200 hover:shadow-md ${game.isPrivate ? 'opacity-60' : 'hover:border-primary/20 hover:shadow-primary/5'}`}>
                         {game.thumbnailUrl ? (
                           <div className="relative overflow-hidden">
-                            <img
-                              src={game.thumbnailUrl}
-                              alt={game.name}
-                              className="w-full h-32 object-cover"
-                            />
+                            <img src={game.thumbnailUrl} alt={game.name} className="w-full h-32 object-cover" />
                             {game.isPrivate && (
                               <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                                 <Badge variant="outline" className="bg-black/60 border-white/20 text-white text-xs gap-1">
-                                  <Lock className="w-3 h-3" /> Private
+                                  <Lock className="w-3 h-3" /> {t('dashboard.private')}
                                 </Badge>
                               </div>
                             )}
@@ -280,7 +277,7 @@ export default function Dashboard() {
                                     animate={{ scale: [1, 1.3, 1], opacity: [1, 0.6, 1] }}
                                     transition={{ duration: 2, repeat: Infinity }}
                                   />
-                                  {formatNumber(game.playing ?? 0)} playing
+                                  {formatNumber(game.playing ?? 0)} {t('dashboard.playing')}
                                 </Badge>
                               </div>
                             )}
@@ -291,7 +288,7 @@ export default function Dashboard() {
                             {game.isPrivate && (
                               <div className="absolute inset-0 flex items-center justify-center">
                                 <Badge variant="outline" className="text-xs gap-1">
-                                  <Lock className="w-3 h-3" /> Private
+                                  <Lock className="w-3 h-3" /> {t('dashboard.private')}
                                 </Badge>
                               </div>
                             )}
@@ -301,11 +298,11 @@ export default function Dashboard() {
                           <div className="font-medium text-sm truncate mb-1">{game.name}</div>
                           {!game.isPrivate ? (
                             <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                              <span><strong className="text-foreground">{formatNumber(game.visits ?? 0)}</strong> visits</span>
-                              <span><strong className="text-foreground">{formatNumber(game.favoritedCount ?? 0)}</strong> fav</span>
+                              <span><strong className="text-foreground">{formatNumber(game.visits ?? 0)}</strong> {t('dashboard.visits')}</span>
+                              <span><strong className="text-foreground">{formatNumber(game.favoritedCount ?? 0)}</strong> {t('dashboard.fav')}</span>
                             </div>
                           ) : (
-                            <p className="text-xs text-muted-foreground">Stats available once public</p>
+                            <p className="text-xs text-muted-foreground">{t('dashboard.statsAvailableOncePublic')}</p>
                           )}
                         </CardContent>
                       </Card>
@@ -317,8 +314,8 @@ export default function Dashboard() {
               {group.games.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-10 text-center border border-dashed border-border/50 rounded-xl">
                   <Gamepad2 className="w-8 h-8 mx-auto mb-2 text-muted-foreground/30" />
-                  <p className="text-sm text-muted-foreground">No public games yet.</p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">Games will appear here once published on Roblox.</p>
+                  <p className="text-sm text-muted-foreground">{t('dashboard.noPublicGames')}</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">{t('dashboard.noGamesPublicYet')}</p>
                 </div>
               )}
             </div>
@@ -332,7 +329,7 @@ export default function Dashboard() {
         </motion.div>
 
         {/* Team members preview */}
-        {!usersLoading && users && users.length > 0 && (
+        {!usersLoading && users.length > 0 && (
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25, type: 'spring', stiffness: 200, damping: 22 }}>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-semibold">{t('dashboard.team')}</h2>
@@ -381,12 +378,12 @@ export default function Dashboard() {
         )}
 
         {/* Planning boards preview */}
-        {!boardsLoading && boards && boards.length > 0 && (
+        {!boardsLoading && boards.length > 0 && (
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35, type: 'spring', stiffness: 200, damping: 22 }}>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold">Recent Boards</h2>
+              <h2 className="text-lg font-semibold">{t('dashboard.recentBoards')}</h2>
               <Link href="/planning" className="text-xs text-muted-foreground hover:text-primary transition-colors">
-                View all →
+                {t('dashboard.viewAll')}
               </Link>
             </div>
             <motion.div
@@ -423,7 +420,7 @@ export default function Dashboard() {
         )}
 
         {/* Empty state */}
-        {!isLoading && (!users || users.length === 0) && (!boards || boards.length === 0) && (
+        {!isLoading && users.length === 0 && boards.length === 0 && (
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2, type: 'spring' }}>
             <Card className="border-dashed">
               <CardContent className="p-10 text-center">
@@ -434,10 +431,8 @@ export default function Dashboard() {
                 >
                   <Shield className="w-7 h-7 text-primary" />
                 </motion.div>
-                <h3 className="font-semibold mb-1">Studio ready</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Add team members in Users, and create planning boards to get started.
-                </p>
+                <h3 className="font-semibold mb-1">{t('dashboard.studioReady')}</h3>
+                <p className="text-sm text-muted-foreground mb-4">{t('dashboard.studioReadyDesc')}</p>
               </CardContent>
             </Card>
           </motion.div>

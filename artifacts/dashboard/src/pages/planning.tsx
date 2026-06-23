@@ -187,7 +187,7 @@ export default function Planning() {
           variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.06 } } }}
         >
           {boards.map((board, idx) => {
-            const boardTeam = board.teamId ? teams.find(t => t.id === board.teamId) : null;
+            const boardTeam = board.teamId ? teams.find(tm => tm.id === board.teamId) : null;
             return (
               <motion.div
                 key={board.id}
@@ -215,7 +215,7 @@ export default function Planning() {
                         ) : (
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium text-muted-foreground/60 border border-border/30">
                             <Globe className="w-2.5 h-2.5" />
-                            All
+                            {t('planning.all')}
                           </span>
                         )}
                         <button
@@ -269,12 +269,12 @@ export default function Planning() {
             />
             {isAdmin && (
               <div>
-                <label className="text-sm font-medium mb-2 block">Visibility</label>
+                <label className="text-sm font-medium mb-2 block">{t('planning.visibility')}</label>
                 <div className="grid grid-cols-3 gap-1.5 mb-2">
                   {[
-                    { key: 'public', icon: Globe, label: 'Everyone' },
-                    { key: 'team', icon: Users2, label: 'Team' },
-                    { key: 'users', icon: User, label: 'Specific users' },
+                    { key: 'public', icon: Globe, label: t('planning.visibilityEveryone') },
+                    { key: 'team', icon: Users2, label: t('planning.visibilityTeam') },
+                    { key: 'users', icon: User, label: t('planning.visibilityUsers') },
                   ].map(({ key, icon: Icon, label }) => (
                     <button
                       key={key}
@@ -291,7 +291,7 @@ export default function Planning() {
                 {boardVisibility === 'team' && teams.length > 0 && (
                   <Select value={boardTeamId} onValueChange={setBoardTeamId}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select a team" />
+                      <SelectValue placeholder={t('planning.selectTeam')} />
                     </SelectTrigger>
                     <SelectContent>
                       {teams.map(team => (
@@ -332,13 +332,13 @@ export default function Planning() {
                 )}
 
                 <p className="text-[11px] text-muted-foreground mt-1.5">
-                  {boardVisibility === 'public' && 'All members will see this board.'}
+                  {boardVisibility === 'public' && t('planning.visibilityPublicDesc')}
                   {boardVisibility === 'team' && (boardTeamId !== 'none'
-                    ? `Only admins and ${teams.find(t => String(t.id) === boardTeamId)?.name} members will see this board.`
-                    : 'Select a team above.')}
+                    ? t('planning.visibilityTeamDesc', { name: teams.find(tm => String(tm.id) === boardTeamId)?.name })
+                    : t('planning.visibilityTeamSelectDesc'))}
                   {boardVisibility === 'users' && (boardAllowedUserIds.length > 0
-                    ? `${boardAllowedUserIds.length} user(s) + all admins will see this board.`
-                    : 'Select at least one user above.')}
+                    ? t('planning.visibilityUsersDesc', { count: boardAllowedUserIds.length })
+                    : t('planning.visibilityUsersSelectDesc'))}
                 </p>
               </div>
             )}

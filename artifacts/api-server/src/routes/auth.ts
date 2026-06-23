@@ -93,7 +93,6 @@ router.get("/auth/roblox/callback", async (req, res): Promise<void> => {
 
     const robloxId = userInfo.sub;
 
-    // Determine role from hardcoded lists (takes priority)
     const isHardcodedAdmin = HARDCODED_ADMINS.includes(robloxId);
     const isHardcodedCollaborator = HARDCODED_COLLABORATORS.includes(robloxId);
     const isHardcoded = isHardcodedAdmin || isHardcodedCollaborator;
@@ -101,10 +100,15 @@ router.get("/auth/roblox/callback", async (req, res): Promise<void> => {
     let [user] = await db.select().from(usersTable).where(eq(usersTable.robloxId, robloxId));
 
     if (!user) {
-      // New user: assign role from hardcoded lists, default to collaborator
-      let role: "admin" | "collaborator" = "collaborator";
-      if (isHardcodedAdmin) role = "admin";
+      // SECURITY: only allow hardcoded users OR users pre-added by an admin.
+      // Any Roblox account not in the whitelist is rejected.
+      if (!isHardcoded) {
+        req.log.warn({ robloxId, username: userInfo.preferred_username }, "Unauthorized login attempt — user not in whitelist");
+        res.redirect("/?auth_error=unauthorized");
+        return;
+      }
 
+      const role: "admin" | "collaborator" = isHardcodedAdmin ? "admin" : "collaborator";
       const [created] = await db.insert(usersTable).values({
         robloxId,
         robloxUsername: userInfo.preferred_username,
@@ -116,9 +120,8 @@ router.get("/auth/roblox/callback", async (req, res): Promise<void> => {
       }).returning();
       user = created;
     } else {
-      // Existing user: always update profile info.
+      // Existing user: always refresh profile info.
       // Only override the role if the user is in the hardcoded lists.
-      // Otherwise, preserve the role assigned by an admin.
       const updatedRole = isHardcoded
         ? (isHardcodedAdmin ? "admin" : "collaborator")
         : user.role;
