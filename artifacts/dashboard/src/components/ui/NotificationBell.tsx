@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Bell, Users, Columns2, CheckCheck, Circle } from 'lucide-react';
+import { Bell, Users, Columns2, CheckCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useTranslation } from 'react-i18next';
@@ -144,9 +144,7 @@ export function NotificationBell() {
                         )}
                       >
                         {!isRead && (
-                          <div className="absolute left-1.5 top-1/2 -translate-y-1/2">
-                            <Circle className="w-1.5 h-1.5 fill-primary text-primary" />
-                          </div>
+                          <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-primary" />
                         )}
                         <div className="flex-shrink-0 mt-0.5">
                           {n.type === 'new_member' && n.avatarUrl ? (
