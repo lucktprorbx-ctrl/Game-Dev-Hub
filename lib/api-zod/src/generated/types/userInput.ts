@@ -10,6 +10,8 @@ import type { UserInputRole } from './userInputRole';
 export interface UserInput {
   robloxId: string;
   role: UserInputRole;
+  /** @nullable */
+  discordUsername?: string | null;
   subroles?: string[];
   groups?: string[];
 }

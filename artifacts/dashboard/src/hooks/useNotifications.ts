@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react';
-import { useListUsers, useListBoards } from '@workspace/api-client-react';
+import { useListUsers, useListBoards, getListUsersQueryKey, getListBoardsQueryKey } from '@workspace/api-client-react';
 
 const STORAGE_KEY = 'rocheck_notifications_last_read';
 
@@ -21,8 +21,8 @@ function getLastRead(): Date {
 }
 
 export function useNotifications() {
-  const { data: users } = useListUsers(undefined, { query: { refetchInterval: 60_000 } });
-  const { data: boards } = useListBoards(undefined, { query: { refetchInterval: 60_000 } });
+  const { data: users } = useListUsers({ query: { queryKey: getListUsersQueryKey(), refetchInterval: 60_000 } });
+  const { data: boards } = useListBoards({ query: { queryKey: getListBoardsQueryKey(), refetchInterval: 60_000 } });
 
   const notifications = useMemo<NotificationItem[]>(() => {
     const lastRead = getLastRead();

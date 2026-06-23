@@ -233,7 +233,7 @@ export default function Dashboard() {
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-semibold text-base truncate">{group.name}</h3>
                         <Badge variant="secondary" className="text-xs flex-shrink-0">
-                          {formatNumber(group.memberCount)} {t('dashboard.members', { count: group.memberCount })}
+                          {formatNumber(group.memberCount)} {t('dashboard.membersLabel')}
                         </Badge>
                       </div>
                       {group.description && (

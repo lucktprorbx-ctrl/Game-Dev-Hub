@@ -15,6 +15,8 @@ export interface User {
   robloxDisplayName?: string | null;
   /** @nullable */
   robloxAvatarUrl?: string | null;
+  /** @nullable */
+  discordUsername?: string | null;
   role: UserRole;
   subroles?: string[];
   groups?: string[];

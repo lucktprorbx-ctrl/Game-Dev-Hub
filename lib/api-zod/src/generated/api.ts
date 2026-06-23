@@ -25,6 +25,7 @@ export const GetMeResponse = zod.object({
   "robloxUsername": zod.string(),
   "robloxDisplayName": zod.string().nullish(),
   "robloxAvatarUrl": zod.string().nullish(),
+  "discordUsername": zod.string().nullish(),
   "role": zod.enum(['admin', 'collaborator']),
   "subroles": zod.array(zod.string()).optional(),
   "groups": zod.array(zod.string()).optional(),
@@ -167,6 +168,7 @@ export const ListUsersResponseItem = zod.object({
   "robloxUsername": zod.string(),
   "robloxDisplayName": zod.string().nullish(),
   "robloxAvatarUrl": zod.string().nullish(),
+  "discordUsername": zod.string().nullish(),
   "role": zod.enum(['admin', 'collaborator']),
   "subroles": zod.array(zod.string()).optional(),
   "groups": zod.array(zod.string()).optional(),
@@ -181,6 +183,7 @@ export const ListUsersResponse = zod.array(ListUsersResponseItem)
 export const CreateUserBody = zod.object({
   "robloxId": zod.string(),
   "role": zod.enum(['admin', 'collaborator']),
+  "discordUsername": zod.string().nullish(),
   "subroles": zod.array(zod.string()).optional(),
   "groups": zod.array(zod.string()).optional()
 })
@@ -199,6 +202,7 @@ export const GetUserResponse = zod.object({
   "robloxUsername": zod.string(),
   "robloxDisplayName": zod.string().nullish(),
   "robloxAvatarUrl": zod.string().nullish(),
+  "discordUsername": zod.string().nullish(),
   "role": zod.enum(['admin', 'collaborator']),
   "subroles": zod.array(zod.string()).optional(),
   "groups": zod.array(zod.string()).optional(),
@@ -215,6 +219,7 @@ export const UpdateUserParams = zod.object({
 
 export const UpdateUserBody = zod.object({
   "role": zod.enum(['admin', 'collaborator']).optional(),
+  "discordUsername": zod.string().nullish(),
   "subroles": zod.array(zod.string()).optional(),
   "groups": zod.array(zod.string()).optional()
 })
@@ -225,6 +230,7 @@ export const UpdateUserResponse = zod.object({
   "robloxUsername": zod.string(),
   "robloxDisplayName": zod.string().nullish(),
   "robloxAvatarUrl": zod.string().nullish(),
+  "discordUsername": zod.string().nullish(),
   "role": zod.enum(['admin', 'collaborator']),
   "subroles": zod.array(zod.string()).optional(),
   "groups": zod.array(zod.string()).optional(),

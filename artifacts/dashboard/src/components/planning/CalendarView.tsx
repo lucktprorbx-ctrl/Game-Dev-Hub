@@ -16,9 +16,9 @@ import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const EVENT_COLORS = ['#f59e0b', '#6366f1', '#10b981', '#ef4444', '#8b5cf6', '#06b6d4'];
-const HOUR_HEIGHT = 56; // px per hour
-const DAY_START_HOUR = 7;
-const DAY_END_HOUR = 22;
+const HOUR_HEIGHT = 48; // px per hour
+const DAY_START_HOUR = 0;
+const DAY_END_HOUR = 24;
 const VISIBLE_HOURS = DAY_END_HOUR - DAY_START_HOUR;
 
 type UserInfo = { id: number; username: string; displayName: string | null; avatarUrl: string | null; role: string; subroles: string[] };

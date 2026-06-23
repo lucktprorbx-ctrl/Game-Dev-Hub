@@ -25,6 +25,8 @@ export interface User {
   robloxDisplayName?: string | null;
   /** @nullable */
   robloxAvatarUrl?: string | null;
+  /** @nullable */
+  discordUsername?: string | null;
   role: UserRole;
   subroles?: string[];
   groups?: string[];
@@ -42,6 +44,8 @@ export const UserInputRole = {
 export interface UserInput {
   robloxId: string;
   role: UserInputRole;
+  /** @nullable */
+  discordUsername?: string | null;
   subroles?: string[];
   groups?: string[];
 }
@@ -56,6 +60,8 @@ export const UserUpdateRole = {
 
 export interface UserUpdate {
   role?: UserUpdateRole;
+  /** @nullable */
+  discordUsername?: string | null;
   subroles?: string[];
   groups?: string[];
 }

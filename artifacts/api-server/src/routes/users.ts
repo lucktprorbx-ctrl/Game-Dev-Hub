@@ -110,6 +110,7 @@ router.post("/users", requireAuth, requireAdmin, async (req, res): Promise<void>
     robloxUsername: profile.username,
     robloxDisplayName: profile.displayName,
     robloxAvatarUrl: profile.avatarUrl,
+    discordUsername: (parsed.data as any).discordUsername ?? null,
     role: parsed.data.role,
     subroles: parsed.data.subroles ?? [],
     groups: parsed.data.groups ?? [],

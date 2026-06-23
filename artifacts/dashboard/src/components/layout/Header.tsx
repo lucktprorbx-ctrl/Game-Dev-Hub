@@ -1,46 +1,79 @@
-import { Menu } from 'lucide-react';
+import { Menu, Globe, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { NotificationBell } from '@/components/ui/NotificationBell';
 import { useTranslation } from 'react-i18next';
-import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useRef, useEffect } from 'react';
 
 interface HeaderProps {
   onMenuClick?: () => void;
 }
 
-function LangToggle() {
-  const { i18n } = useTranslation();
-  const current = i18n.language === 'fr' ? 'fr' : 'en';
+const LANGS = [
+  { code: 'en', label: 'English', flag: '🇬🇧' },
+  { code: 'fr', label: 'Français', flag: '🇫🇷' },
+] as const;
 
-  const toggle = (lang: 'en' | 'fr') => {
-    if (lang !== current) i18n.changeLanguage(lang);
-  };
+function LangDropdown() {
+  const { i18n } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const current = LANGS.find(l => l.code === (i18n.language === 'fr' ? 'fr' : 'en')) ?? LANGS[0];
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   return (
-    <div className="flex items-center gap-0.5 bg-muted/60 rounded-lg p-0.5 border border-border/40">
-      {(['en', 'fr'] as const).map((lang) => (
-        <motion.button
-          key={lang}
-          onClick={() => toggle(lang)}
-          whileTap={{ scale: 0.93 }}
-          className={cn(
-            "relative px-2.5 py-1 rounded-md text-xs font-semibold transition-colors duration-150 select-none",
-            current === lang
-              ? "text-foreground"
-              : "text-muted-foreground hover:text-foreground"
-          )}
-        >
-          {current === lang && (
-            <motion.span
-              layoutId="lang-pill"
-              className="absolute inset-0 bg-background rounded-md shadow-sm border border-border/50"
-              transition={{ type: 'spring', stiffness: 500, damping: 35 }}
-            />
-          )}
-          <span className="relative z-10 uppercase">{lang}</span>
-        </motion.button>
-      ))}
+    <div className="relative" ref={ref}>
+      <motion.button
+        whileHover={{ scale: 1.04 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={() => setOpen(v => !v)}
+        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+          open
+            ? 'bg-muted text-foreground border-border'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted/60 border-transparent'
+        }`}
+        aria-label="Change language"
+      >
+        <Globe className="w-3.5 h-3.5" />
+        <span className="hidden sm:block uppercase tracking-wide">{current.code}</span>
+      </motion.button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            className="absolute right-0 top-full mt-1.5 w-40 bg-popover border border-border rounded-xl shadow-xl shadow-black/20 z-50 overflow-hidden py-1"
+          >
+            {LANGS.map(lang => (
+              <button
+                key={lang.code}
+                onClick={() => { i18n.changeLanguage(lang.code); setOpen(false); }}
+                className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-muted/50 transition-colors"
+              >
+                <span className="flex items-center gap-2">
+                  <span className="text-base leading-none">{lang.flag}</span>
+                  <span className={current.code === lang.code ? 'font-medium text-foreground' : 'text-muted-foreground'}>
+                    {lang.label}
+                  </span>
+                </span>
+                {current.code === lang.code && (
+                  <Check className="w-3.5 h-3.5 text-primary" />
+                )}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -60,7 +93,7 @@ export function Header({ onMenuClick }: HeaderProps) {
 
       <div className="flex-1" />
 
-      <LangToggle />
+      <LangDropdown />
       <NotificationBell />
     </header>
   );

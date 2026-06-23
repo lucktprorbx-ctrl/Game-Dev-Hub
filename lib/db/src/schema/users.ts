@@ -10,6 +10,7 @@ export const usersTable = pgTable("users", {
   robloxUsername: text("roblox_username").notNull(),
   robloxDisplayName: text("roblox_display_name"),
   robloxAvatarUrl: text("roblox_avatar_url"),
+  discordUsername: text("discord_username"),
   role: roleEnum("role").notNull().default("collaborator"),
   subroles: text("subroles").array().notNull().default([]),
   groups: text("groups").array().notNull().default([]),

@@ -4,7 +4,6 @@ import {
 } from '@workspace/api-client-react';
 import type { Team } from '@workspace/api-client-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PageTransition } from '@/components/ui/page-transition';
@@ -15,32 +14,34 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useState, useEffect, useRef } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Shield, Users2, UserPlus, Trash2, AlertCircle, CheckCircle2, Ban, Plus, X, Palette } from 'lucide-react';
+import {
+  Shield, Users2, UserPlus, Trash2, AlertCircle, CheckCircle2, Ban, Plus, X, Palette,
+  MessageSquare, Edit2, ChevronDown, ChevronUp,
+} from 'lucide-react';
 import { getSubroleClasses } from '@/lib/role-colors';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
+import { cn } from '@/lib/utils';
 
 function RoleBadge({ role }: { role: string }) {
   if (role === 'admin') {
     return (
-      <Badge className="bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 gap-1">
-        <Shield className="w-3 h-3" />
-        Admin
+      <Badge className="bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 gap-1 text-[10px]">
+        <Shield className="w-2.5 h-2.5" /> Admin
       </Badge>
     );
   }
   return (
-    <Badge className="bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 gap-1">
-      <Users2 className="w-3 h-3" />
-      Collaborateur
+    <Badge className="bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 gap-1 text-[10px]">
+      <Users2 className="w-2.5 h-2.5" /> Collab.
     </Badge>
   );
 }
 
 function SubroleBadge({ subrole }: { subrole: string }) {
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getSubroleClasses(subrole)}`}>
+    <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium ${getSubroleClasses(subrole)}`}>
       {subrole}
     </span>
   );
@@ -54,14 +55,13 @@ const TEAM_COLORS = [
   '#10b981', '#ec4899', '#14b8a6', '#f97316',
 ];
 
-const rowVariants = {
-  hidden: { opacity: 0, x: -12 },
+const cardVariants = {
+  hidden: { opacity: 0, y: 8 },
   show: (i: number) => ({
-    opacity: 1,
-    x: 0,
-    transition: { type: 'spring' as const, stiffness: 260, damping: 22, delay: i * 0.05 },
+    opacity: 1, y: 0,
+    transition: { type: 'spring' as const, stiffness: 260, damping: 22, delay: i * 0.04 },
   }),
-  exit: { opacity: 0, x: 12, transition: { duration: 0.2 } },
+  exit: { opacity: 0, scale: 0.97, transition: { duration: 0.15 } },
 };
 
 // ── Teams Management Component ────────────────────────────────────────────────
@@ -74,6 +74,7 @@ function TeamsManagement() {
   const addMember = useAddTeamMember();
   const removeMember = useRemoveTeamMember();
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
@@ -90,9 +91,7 @@ function TeamsManagement() {
     await createTeam.mutateAsync({ data: { name: newTeamName.trim(), color: newTeamColor, description: newTeamDesc.trim() || undefined } });
     invalidate();
     setCreateDialogOpen(false);
-    setNewTeamName('');
-    setNewTeamDesc('');
-    setNewTeamColor(TEAM_COLORS[0]);
+    setNewTeamName(''); setNewTeamDesc(''); setNewTeamColor(TEAM_COLORS[0]);
   };
 
   const handleDeleteTeam = async (id: number) => {
@@ -117,21 +116,18 @@ function TeamsManagement() {
 
   return (
     <div className="space-y-5">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div className="flex items-start gap-3">
           <div className="w-9 h-9 rounded-lg bg-indigo-500/15 flex items-center justify-center flex-shrink-0">
-            <Users2 className="w-4.5 h-4.5 text-indigo-400" />
+            <Users2 className="w-4 h-4 text-indigo-400" />
           </div>
           <div>
-            <h3 className="font-semibold text-sm">Équipes de visibilité</h3>
-            <p className="text-xs text-muted-foreground mt-0.5 max-w-md">
-              Chaque équipe regroupe des collaborateurs. Lors de la création d'un tableau Kanban, vous pouvez le restreindre à une équipe — seuls ses membres le verront.
-            </p>
+            <h3 className="font-semibold text-sm">{t('users.teamsVisibility')}</h3>
+            <p className="text-xs text-muted-foreground mt-0.5 max-w-md">{t('users.teamsVisibilityDesc')}</p>
           </div>
         </div>
         <Button size="sm" className="gap-1.5 flex-shrink-0" onClick={() => setCreateDialogOpen(true)}>
-          <Plus className="w-4 h-4" /> Nouvelle Équipe
+          <Plus className="w-4 h-4" /> {t('users.newTeam')}
         </Button>
       </div>
 
@@ -144,12 +140,10 @@ function TeamsManagement() {
           <div className="w-12 h-12 rounded-xl bg-indigo-500/10 flex items-center justify-center mb-3">
             <Users2 className="w-5 h-5 text-indigo-400/60" />
           </div>
-          <p className="font-semibold mb-1 text-sm">Aucune équipe</p>
-          <p className="text-xs text-muted-foreground mb-4 max-w-xs">
-            Créez votre première équipe pour contrôler la visibilité des tableaux de planification.
-          </p>
+          <p className="font-semibold mb-1 text-sm">{t('users.noTeamsCreate')}</p>
+          <p className="text-xs text-muted-foreground mb-4 max-w-xs">{t('users.noTeamsCreateDesc')}</p>
           <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="w-4 h-4 mr-1.5" /> Créer une équipe
+            <Plus className="w-4 h-4 mr-1.5" /> {t('users.createFirstTeam')}
           </Button>
         </div>
       ) : (
@@ -161,7 +155,6 @@ function TeamsManagement() {
 
             return (
               <Card key={team.id} className="border border-border/50 overflow-hidden">
-                {/* Color band top */}
                 <div className="h-1 w-full" style={{ backgroundColor: team.color }} />
                 <CardHeader className="pb-2 pt-3 px-4">
                   <div className="flex items-start justify-between gap-2">
@@ -177,18 +170,17 @@ function TeamsManagement() {
                     <button
                       onClick={() => handleDeleteTeam(team.id)}
                       className="text-muted-foreground/40 hover:text-destructive transition-colors p-1 rounded flex-shrink-0"
-                      title="Supprimer l'équipe"
+                      title={t('users.deleteTeam')}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </CardHeader>
                 <CardContent className="px-4 pb-4 space-y-3">
-                  {/* Members */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-                        Membres · {team.members.length}
+                        {t('users.membersOf')} · {team.members.length}
                       </span>
                     </div>
                     {team.members.length > 0 ? (
@@ -203,7 +195,7 @@ function TeamsManagement() {
                             <button
                               onClick={() => handleRemoveMember(team.id, m.userId)}
                               className="text-muted-foreground/30 hover:text-destructive transition-colors p-0.5 rounded-full"
-                              title="Retirer"
+                              title={t('users.remove')}
                             >
                               <X className="w-3 h-3" />
                             </button>
@@ -211,11 +203,10 @@ function TeamsManagement() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-xs text-muted-foreground/50 italic">Aucun membre pour l'instant</p>
+                      <p className="text-xs text-muted-foreground/50 italic">{t('users.noTeamsYet')}</p>
                     )}
                   </div>
 
-                  {/* Add member */}
                   {eligible.length > 0 && (
                     <div className="border-t border-border/40 pt-3">
                       {!isAdding ? (
@@ -223,13 +214,13 @@ function TeamsManagement() {
                           onClick={() => { setAddMemberTeam(team); setAddMemberUserId(''); }}
                           className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
                         >
-                          <UserPlus className="w-3.5 h-3.5" /> Ajouter un membre
+                          <UserPlus className="w-3.5 h-3.5" /> {t('users.addMember')}
                         </button>
                       ) : (
                         <div className="flex gap-2 items-center">
                           <Select value={addMemberUserId} onValueChange={setAddMemberUserId}>
                             <SelectTrigger className="h-8 text-xs flex-1">
-                              <SelectValue placeholder="Sélectionner un utilisateur…" />
+                              <SelectValue placeholder={t('users.selectUser')} />
                             </SelectTrigger>
                             <SelectContent>
                               {eligible.map(u => (
@@ -240,7 +231,7 @@ function TeamsManagement() {
                             </SelectContent>
                           </Select>
                           <Button size="sm" className="h-8 px-3 text-xs" disabled={!addMemberUserId} onClick={handleAddMember}>
-                            Ajouter
+                            {t('users.addMemberBtn')}
                           </Button>
                           <button onClick={() => { setAddMemberTeam(null); setAddMemberUserId(''); }} className="text-muted-foreground hover:text-foreground">
                             <X className="w-4 h-4" />
@@ -261,36 +252,34 @@ function TeamsManagement() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Users2 className="w-4 h-4 text-indigo-400" /> Nouvelle Équipe
+              <Users2 className="w-4 h-4 text-indigo-400" /> {t('users.newTeamTitle')}
             </DialogTitle>
           </DialogHeader>
-          <p className="text-xs text-muted-foreground -mt-1">
-            Cette équipe pourra être assignée à un tableau Kanban pour en restreindre la visibilité.
-          </p>
+          <p className="text-xs text-muted-foreground -mt-1">{t('users.newTeamSubtitle')}</p>
           <div className="space-y-4 pt-1">
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Nom de l'équipe <span className="text-destructive">*</span></label>
-              <Input placeholder="ex. Dev Team, Art Team…" value={newTeamName} onChange={e => setNewTeamName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateTeam()} autoFocus />
+              <label className="text-sm font-medium mb-1.5 block">{t('users.teamName')} <span className="text-destructive">*</span></label>
+              <Input placeholder={t('users.teamNamePlaceholder')} value={newTeamName} onChange={e => setNewTeamName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateTeam()} autoFocus />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Description <span className="text-muted-foreground text-xs font-normal">(optionnel)</span></label>
-              <Input placeholder="Courte description…" value={newTeamDesc} onChange={e => setNewTeamDesc(e.target.value)} />
+              <label className="text-sm font-medium mb-1.5 block">{t('users.descriptionLabel')} <span className="text-muted-foreground text-xs font-normal">{t('users.optional')}</span></label>
+              <Input placeholder={t('users.descriptionPlaceholder')} value={newTeamDesc} onChange={e => setNewTeamDesc(e.target.value)} />
             </div>
             <div>
-              <label className="text-sm font-medium mb-2 block">Couleur</label>
+              <label className="text-sm font-medium mb-2 block">{t('users.color')}</label>
               <div className="flex flex-wrap gap-2">
                 {TEAM_COLORS.map(c => (
                   <button
                     key={c}
                     onClick={() => setNewTeamColor(c)}
-                    className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${newTeamColor === c ? 'border-white scale-110 ring-2 ring-offset-1 ring-offset-background' : 'border-transparent'}`}
-                    style={{ backgroundColor: c, ...(newTeamColor === c ? { ringColor: c } : {}) }}
+                    className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${newTeamColor === c ? 'border-white scale-110' : 'border-transparent'}`}
+                    style={{ backgroundColor: c }}
                   />
                 ))}
               </div>
             </div>
             <Button className="w-full" onClick={handleCreateTeam} disabled={createTeam.isPending || !newTeamName.trim()}>
-              {createTeam.isPending ? 'Création…' : 'Créer l\'équipe'}
+              {createTeam.isPending ? t('users.creating') : t('users.createTeam')}
             </Button>
           </div>
         </DialogContent>
@@ -312,6 +301,7 @@ type UserGroup = { id: number; name: string; description: string | null; color: 
 function GroupsManagement() {
   const queryClient = useQueryClient();
   const { data: users } = useListUsers();
+  const { t } = useTranslation();
 
   const { data: groups, isLoading } = useQuery<UserGroup[]>({
     queryKey: ['user-groups'],
@@ -366,21 +356,18 @@ function GroupsManagement() {
 
   return (
     <div className="space-y-5">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div className="flex items-start gap-3">
           <div className="w-9 h-9 rounded-lg bg-amber-500/15 flex items-center justify-center flex-shrink-0">
-            <Users2 className="w-4.5 h-4.5 text-amber-400" />
+            <Users2 className="w-4 h-4 text-amber-400" />
           </div>
           <div>
-            <h3 className="font-semibold text-sm">Groupes de membres</h3>
-            <p className="text-xs text-muted-foreground mt-0.5 max-w-md">
-              Les groupes permettent d'organiser les membres librement (ex. Core Team, Art Team). Ils n'affectent pas la visibilité des tableaux — c'est pour la gestion interne.
-            </p>
+            <h3 className="font-semibold text-sm">{t('users.groupsMembers')}</h3>
+            <p className="text-xs text-muted-foreground mt-0.5 max-w-md">{t('users.groupsMembersDesc')}</p>
           </div>
         </div>
         <Button size="sm" className="gap-1.5 flex-shrink-0" onClick={() => setCreateDialogOpen(true)}>
-          <Plus className="w-4 h-4" /> Nouveau Groupe
+          <Plus className="w-4 h-4" /> {t('users.newGroup')}
         </Button>
       </div>
 
@@ -393,12 +380,10 @@ function GroupsManagement() {
           <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center mb-3">
             <Users2 className="w-5 h-5 text-amber-400/60" />
           </div>
-          <p className="font-semibold mb-1 text-sm">Aucun groupe</p>
-          <p className="text-xs text-muted-foreground mb-4 max-w-xs">
-            Créez un groupe pour organiser vos membres (Core Team, Art Team, Investors…).
-          </p>
+          <p className="font-semibold mb-1 text-sm">{t('users.noGroupsCreate')}</p>
+          <p className="text-xs text-muted-foreground mb-4 max-w-xs">{t('users.noGroupsCreateDesc')}</p>
           <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
-            <Plus className="w-4 h-4 mr-1.5" /> Créer un groupe
+            <Plus className="w-4 h-4 mr-1.5" /> {t('users.createFirstGroup')}
           </Button>
         </div>
       ) : (
@@ -409,7 +394,6 @@ function GroupsManagement() {
 
             return (
               <Card key={group.id} className="border border-border/50 overflow-hidden">
-                {/* Color band top */}
                 <div className="h-1 w-full" style={{ backgroundColor: group.color }} />
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
@@ -425,16 +409,15 @@ function GroupsManagement() {
                     <button
                       onClick={() => deleteGroup.mutate(group.id)}
                       className="text-muted-foreground/40 hover:text-destructive transition-colors p-1 rounded flex-shrink-0"
-                      title="Supprimer le groupe"
+                      title={t('users.deleteGroup')}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
-                  {/* Members */}
                   <div>
                     <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide block mb-2">
-                      Membres · {group.members.length}
+                      {t('users.membersOf')} · {group.members.length}
                     </span>
                     {group.members.length > 0 ? (
                       <div className="flex flex-wrap gap-1.5">
@@ -448,7 +431,7 @@ function GroupsManagement() {
                             <button
                               onClick={() => removeMember.mutate({ groupId: group.id, userId: m.id })}
                               className="text-muted-foreground/30 hover:text-destructive transition-colors"
-                              title="Retirer"
+                              title={t('users.remove')}
                             >
                               <X className="w-3 h-3" />
                             </button>
@@ -456,11 +439,10 @@ function GroupsManagement() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-xs text-muted-foreground/50 italic">Aucun membre pour l'instant</p>
+                      <p className="text-xs text-muted-foreground/50 italic">{t('users.noGroupsYet')}</p>
                     )}
                   </div>
 
-                  {/* Add member */}
                   {eligible.length > 0 && (
                     <div className="border-t border-border/40 pt-3">
                       {!isAdding ? (
@@ -468,13 +450,13 @@ function GroupsManagement() {
                           onClick={() => { setAddMemberGroupId(group.id); setAddMemberUserId(''); }}
                           className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
                         >
-                          <UserPlus className="w-3.5 h-3.5" /> Ajouter un membre
+                          <UserPlus className="w-3.5 h-3.5" /> {t('users.addMember')}
                         </button>
                       ) : (
                         <div className="flex gap-2 items-center">
                           <Select value={addMemberUserId} onValueChange={setAddMemberUserId}>
                             <SelectTrigger className="h-8 text-xs flex-1">
-                              <SelectValue placeholder="Sélectionner un utilisateur…" />
+                              <SelectValue placeholder={t('users.selectUser')} />
                             </SelectTrigger>
                             <SelectContent>
                               {eligible.map(u => (
@@ -485,7 +467,7 @@ function GroupsManagement() {
                             </SelectContent>
                           </Select>
                           <Button size="sm" className="h-8 px-3 text-xs" disabled={!addMemberUserId} onClick={handleAddMember}>
-                            Ajouter
+                            {t('users.addMemberBtn')}
                           </Button>
                           <button onClick={() => { setAddMemberGroupId(null); setAddMemberUserId(''); }} className="text-muted-foreground hover:text-foreground">
                             <X className="w-4 h-4" />
@@ -506,23 +488,21 @@ function GroupsManagement() {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Users2 className="w-4 h-4 text-amber-400" /> Nouveau Groupe
+              <Users2 className="w-4 h-4 text-amber-400" /> {t('users.newGroupTitle')}
             </DialogTitle>
           </DialogHeader>
-          <p className="text-xs text-muted-foreground -mt-1">
-            Un groupe permet d'organiser vos membres pour référence interne (ex. Core Team, Art Team).
-          </p>
+          <p className="text-xs text-muted-foreground -mt-1">{t('users.newGroupSubtitle')}</p>
           <div className="space-y-3 pt-1">
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Nom du groupe <span className="text-destructive">*</span></label>
-              <Input placeholder="ex. Core Team, Art Team…" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateGroup()} autoFocus />
+              <label className="text-sm font-medium mb-1.5 block">{t('users.groupName')} <span className="text-destructive">*</span></label>
+              <Input placeholder={t('users.groupNamePlaceholder')} value={newGroupName} onChange={e => setNewGroupName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateGroup()} autoFocus />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">Description <span className="text-muted-foreground text-xs font-normal">(optionnel)</span></label>
-              <Input placeholder="Courte description…" value={newGroupDesc} onChange={e => setNewGroupDesc(e.target.value)} />
+              <label className="text-sm font-medium mb-1.5 block">{t('users.descriptionLabel')} <span className="text-muted-foreground text-xs font-normal">{t('users.optional')}</span></label>
+              <Input placeholder={t('users.descriptionPlaceholder')} value={newGroupDesc} onChange={e => setNewGroupDesc(e.target.value)} />
             </div>
             <div>
-              <label className="text-sm font-medium mb-2 block">Couleur</label>
+              <label className="text-sm font-medium mb-2 block">{t('users.color')}</label>
               <div className="flex gap-2 flex-wrap">
                 {GROUP_COLORS.map(c => (
                   <button key={c} onClick={() => setNewGroupColor(c)}
@@ -532,12 +512,170 @@ function GroupsManagement() {
               </div>
             </div>
             <Button className="w-full" onClick={handleCreateGroup} disabled={createGroup.isPending || !newGroupName.trim()}>
-              {createGroup.isPending ? 'Création…' : 'Créer le groupe'}
+              {createGroup.isPending ? t('users.creating') : t('users.createGroup')}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+// ── User Card Component ────────────────────────────────────────────────────────
+
+type UserListUser = {
+  id: number;
+  robloxUsername: string;
+  robloxDisplayName?: string | null;
+  robloxAvatarUrl?: string | null;
+  discordUsername?: string | null;
+  role: 'admin' | 'collaborator';
+  subroles: string[];
+  groups: string[];
+  createdAt: string;
+};
+
+function UserCard({
+  user,
+  index,
+  isAdmin,
+  onEdit,
+  onDelete,
+}: {
+  user: UserListUser;
+  index: number;
+  isAdmin: boolean;
+  onEdit: (user: UserListUser) => void;
+  onDelete: (id: number) => void;
+}) {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+
+  const joinedDate = new Date(user.createdAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+
+  return (
+    <motion.div
+      custom={index}
+      variants={cardVariants}
+      initial="hidden"
+      animate="show"
+      exit="exit"
+      className="bg-card border border-border/50 rounded-xl overflow-hidden hover:border-border/80 transition-colors"
+    >
+      <div className="flex items-center gap-3 p-3 sm:p-4">
+        {/* Avatar */}
+        <div className="flex-shrink-0">
+          {user.robloxAvatarUrl ? (
+            <img src={user.robloxAvatarUrl} alt="" className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl object-cover ring-1 ring-border/50 bg-muted" />
+          ) : (
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-sm ring-1 ring-border/50">
+              {user.robloxUsername.charAt(0).toUpperCase()}
+            </div>
+          )}
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-sm truncate max-w-[120px] sm:max-w-none">
+              {user.robloxDisplayName || user.robloxUsername}
+            </span>
+            <RoleBadge role={user.role} />
+          </div>
+          {user.robloxDisplayName && (
+            <p className="text-xs text-muted-foreground/60 truncate">@{user.robloxUsername}</p>
+          )}
+          {/* Primary subrole */}
+          {user.subroles?.length > 0 && (
+            <div className="flex items-center gap-1 mt-1 flex-wrap">
+              <SubroleBadge subrole={user.subroles[0]} />
+              {user.subroles.length > 1 && (
+                <span className="text-[10px] text-muted-foreground/60">+{user.subroles.length - 1}</span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button
+            onClick={() => setExpanded(v => !v)}
+            className="p-1.5 text-muted-foreground/50 hover:text-muted-foreground rounded-lg hover:bg-muted/40 transition-colors"
+            title="Details"
+          >
+            {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+          {isAdmin && (
+            <>
+              <button
+                onClick={() => onEdit(user)}
+                className="p-1.5 text-muted-foreground/50 hover:text-primary rounded-lg hover:bg-primary/10 transition-colors"
+                title={t('users.editUser')}
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => onDelete(user.id)}
+                className="p-1.5 text-muted-foreground/30 hover:text-destructive rounded-lg hover:bg-destructive/10 transition-colors"
+                title={t('users.deleteMember')}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Expanded details */}
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            className="overflow-hidden border-t border-border/40"
+          >
+            <div className="px-4 py-3 space-y-2.5 bg-muted/10">
+              {/* Discord */}
+              {user.discordUsername && (
+                <div className="flex items-center gap-2 text-xs">
+                  <MessageSquare className="w-3 h-3 text-indigo-400 flex-shrink-0" />
+                  <span className="text-muted-foreground">{t('users.discordHandle')}:</span>
+                  <span className="font-medium">{user.discordUsername}</span>
+                </div>
+              )}
+              {/* Groups */}
+              {user.groups?.length > 0 && (
+                <div className="flex items-start gap-2 text-xs">
+                  <Users2 className="w-3 h-3 text-muted-foreground/60 flex-shrink-0 mt-0.5" />
+                  <span className="text-muted-foreground">{t('users.tableGroups')}:</span>
+                  <div className="flex flex-wrap gap-1">
+                    {user.groups.map(g => (
+                      <span key={g} className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[10px] border border-blue-500/20">{g}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* All subroles */}
+              {user.subroles?.length > 1 && (
+                <div className="flex items-start gap-2 text-xs">
+                  <Palette className="w-3 h-3 text-muted-foreground/60 flex-shrink-0 mt-0.5" />
+                  <span className="text-muted-foreground">{t('users.tableSubroles')}:</span>
+                  <div className="flex flex-wrap gap-1">
+                    {user.subroles.map(sr => <SubroleBadge key={sr} subrole={sr} />)}
+                  </div>
+                </div>
+              )}
+              {/* Joined date */}
+              <div className="flex items-center gap-2 text-xs text-muted-foreground/50">
+                <span>{t('users.joinedOn')}: {joinedDate}</span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
 
@@ -557,12 +695,14 @@ export default function Users() {
   const [role, setRole] = useState<'admin' | 'collaborator'>('collaborator');
   const [subroles, setSubroles] = useState<string[]>([]);
   const [groups, setGroups] = useState<string[]>([]);
+  const [discordUsername, setDiscordUsername] = useState('');
   const [customSubrole, setCustomSubrole] = useState('');
   const [customGroup, setCustomGroup] = useState('');
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [newRobloxId, setNewRobloxId] = useState('');
   const [newRole, setNewRole] = useState<'admin' | 'collaborator'>('collaborator');
+  const [newDiscord, setNewDiscord] = useState('');
   const [addError, setAddError] = useState('');
   const [addLoading, setAddLoading] = useState(false);
 
@@ -590,24 +730,28 @@ export default function Users() {
   }, [newRobloxId]);
 
   const resetAddDialog = () => {
-    setNewRobloxId(''); setNewRole('collaborator'); setAddError('');
+    setNewRobloxId(''); setNewRole('collaborator'); setNewDiscord(''); setAddError('');
     setPreview(null); setPreviewError(''); setPreviewLoading(false);
   };
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: getListUsersQueryKey() });
 
-  const openEdit = (user: { id: number; role: 'admin' | 'collaborator'; subroles: string[]; groups: string[] }) => {
+  const openEdit = (user: UserListUser) => {
     setSelectedUser(user.id);
     setRole(user.role);
     setSubroles(user.subroles ?? []);
     setGroups(user.groups ?? []);
+    setDiscordUsername(user.discordUsername ?? '');
     setCustomSubrole('');
     setCustomGroup('');
   };
 
   const handleUpdate = async () => {
     if (!selectedUser) return;
-    await updateUser.mutateAsync({ id: selectedUser, data: { role, subroles, groups } });
+    await updateUser.mutateAsync({
+      id: selectedUser,
+      data: { role, subroles, groups, discordUsername: discordUsername.trim() || null },
+    });
     invalidate();
     setSelectedUser(null);
   };
@@ -622,10 +766,10 @@ export default function Users() {
     if (!id) return;
     setAddError(''); setAddLoading(true);
     try {
-      await createUser.mutateAsync({ data: { robloxId: id, role: newRole } });
+      await createUser.mutateAsync({ data: { robloxId: id, role: newRole, discordUsername: newDiscord.trim() || null } });
       invalidate();
       setAddDialogOpen(false);
-      setNewRobloxId(''); setNewRole('collaborator');
+      resetAddDialog();
     } catch (err: any) {
       setAddError(err?.response?.data?.error ?? err?.message ?? t('users.failedAddUser'));
     } finally { setAddLoading(false); }
@@ -653,23 +797,26 @@ export default function Users() {
 
   return (
     <PageTransition>
+      {/* Header */}
       <motion.div
-        className="flex justify-between items-center mb-6"
+        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6"
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
       >
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{t('nav.users')}</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t('nav.users')}</h1>
           {!isLoading && users && (
             <p className="text-sm text-muted-foreground mt-1">
-              {users.length} member{users.length !== 1 ? 's' : ''} · {adminCount} admin{adminCount !== 1 ? 's' : ''} · {collaboratorCount} collaborateur{collaboratorCount !== 1 ? 's' : ''}
+              {users.length} {users.length !== 1 ? t('users.totalMembersLabelPlural') : t('users.totalMembersLabel')}
+              {' · '}{adminCount} admin{adminCount !== 1 ? 's' : ''}
+              {' · '}{collaboratorCount} {collaboratorCount !== 1 ? t('users.collaboratorLabel') : t('users.collaboratorLabel')}
             </p>
           )}
         </div>
         {isAdmin && (
           <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-            <Button onClick={() => { setAddDialogOpen(true); setAddError(''); }} className="gap-2">
+            <Button onClick={() => { setAddDialogOpen(true); setAddError(''); }} className="gap-2 w-full sm:w-auto">
               <UserPlus className="w-4 h-4" /> {t('users.addUser')}
             </Button>
           </motion.div>
@@ -679,41 +826,41 @@ export default function Users() {
       {/* Stats cards */}
       {!isLoading && users && users.length > 0 && (
         <motion.div
-          className="grid grid-cols-3 gap-3 mb-6"
+          className="grid grid-cols-3 gap-2 sm:gap-3 mb-6"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05, type: 'spring', stiffness: 200, damping: 22 }}
         >
           <Card className="border-border/50">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-muted/60 flex items-center justify-center flex-shrink-0">
-                <Users2 className="w-4 h-4 text-muted-foreground" />
+            <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-muted/60 flex items-center justify-center flex-shrink-0">
+                <Users2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
               </div>
               <div>
-                <div className="text-2xl font-bold leading-none">{users.length}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">Total</div>
+                <div className="text-xl sm:text-2xl font-bold leading-none">{users.length}</div>
+                <div className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">Total</div>
               </div>
             </CardContent>
           </Card>
           <Card className="border-red-500/20 bg-red-500/5">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center flex-shrink-0">
-                <Shield className="w-4 h-4 text-red-400" />
+            <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-red-500/10 flex items-center justify-center flex-shrink-0">
+                <Shield className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" />
               </div>
               <div>
-                <div className="text-2xl font-bold leading-none text-red-400">{adminCount}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">Admins</div>
+                <div className="text-xl sm:text-2xl font-bold leading-none text-red-400">{adminCount}</div>
+                <div className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">Admins</div>
               </div>
             </CardContent>
           </Card>
           <Card className="border-blue-500/20 bg-blue-500/5">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-                <Users2 className="w-4 h-4 text-blue-400" />
+            <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                <Users2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-400" />
               </div>
               <div>
-                <div className="text-2xl font-bold leading-none text-blue-400">{collaboratorCount}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">Collaborateurs</div>
+                <div className="text-xl sm:text-2xl font-bold leading-none text-blue-400">{collaboratorCount}</div>
+                <div className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">Collab.</div>
               </div>
             </CardContent>
           </Card>
@@ -721,18 +868,18 @@ export default function Users() {
       )}
 
       <Tabs defaultValue="members">
-        <TabsList className="mb-4">
-          <TabsTrigger value="members" className="gap-1.5">
+        <TabsList className="mb-4 w-full sm:w-auto">
+          <TabsTrigger value="members" className="gap-1.5 flex-1 sm:flex-none">
             <Users2 className="w-3.5 h-3.5" /> {t('nav.users')}
           </TabsTrigger>
           {isAdmin && (
-            <TabsTrigger value="teams" className="gap-1.5">
-              <Shield className="w-3.5 h-3.5" /> Équipes
+            <TabsTrigger value="teams" className="gap-1.5 flex-1 sm:flex-none">
+              <Shield className="w-3.5 h-3.5" /> {t('users.teams')}
             </TabsTrigger>
           )}
           {isAdmin && (
-            <TabsTrigger value="groups" className="gap-1.5">
-              <Users2 className="w-3.5 h-3.5" /> Groupes
+            <TabsTrigger value="groups" className="gap-1.5 flex-1 sm:flex-none">
+              <Users2 className="w-3.5 h-3.5" /> {t('users.groupsTab')}
             </TabsTrigger>
           )}
         </TabsList>
@@ -742,117 +889,29 @@ export default function Users() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, type: 'spring', stiffness: 200, damping: 22 }}
+            className="space-y-2"
           >
-            <Card>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t('users.tableUser')}</TableHead>
-                      <TableHead>{t('users.tableRole')}</TableHead>
-                      <TableHead>{t('users.tableSubroles')}</TableHead>
-                      <TableHead>{t('users.tableGroups')}</TableHead>
-                      {isAdmin && <TableHead className="text-right">{t('users.tableActions')}</TableHead>}
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {isLoading ? (
-                      [1, 2, 3].map(i => (
-                        <TableRow key={i}>
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <Skeleton className="w-8 h-8 rounded-full" />
-                              <div className="space-y-1.5"><Skeleton className="h-4 w-28" /><Skeleton className="h-3 w-20" /></div>
-                            </div>
-                          </TableCell>
-                          <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
-                          <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
-                          <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
-                          {isAdmin && <TableCell><Skeleton className="h-7 w-14 ml-auto" /></TableCell>}
-                        </TableRow>
-                      ))
-                    ) : users?.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={isAdmin ? 5 : 4} className="text-center py-10 text-muted-foreground">{t('users.noUsersYet')}</TableCell>
-                      </TableRow>
-                    ) : (
-                      <AnimatePresence initial={false}>
-                        {users?.map((user, i) => (
-                          <motion.tr
-                            key={user.id}
-                            custom={i}
-                            variants={rowVariants}
-                            initial="hidden"
-                            animate="show"
-                            exit="exit"
-                            className="group border-b border-border/50 last:border-0"
-                            whileHover={{ backgroundColor: 'hsl(var(--muted)/0.3)' }}
-                            transition={{ duration: 0.15 }}
-                          >
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                <motion.div
-                                  whileHover={{ scale: 1.12 }}
-                                  transition={{ type: 'spring', stiffness: 400, damping: 15 }}
-                                  className="flex-shrink-0"
-                                >
-                                  {user.robloxAvatarUrl ? (
-                                    <img src={user.robloxAvatarUrl} alt="" className="w-8 h-8 rounded-full bg-muted ring-1 ring-border/50" />
-                                  ) : (
-                                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary text-sm">
-                                      {user.robloxUsername.charAt(0).toUpperCase()}
-                                    </div>
-                                  )}
-                                </motion.div>
-                                <div>
-                                  <div className="font-medium">{user.robloxDisplayName || user.robloxUsername}</div>
-                                  <div className="text-xs text-muted-foreground">@{user.robloxUsername}</div>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <RoleBadge role={user.role} />
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex gap-1 flex-wrap">
-                                {(user.subroles?.length ?? 0) > 0
-                                  ? user.subroles!.map(sr => <SubroleBadge key={sr} subrole={sr} />)
-                                  : <span className="text-xs text-muted-foreground/50">—</span>
-                                }
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex gap-1 flex-wrap">
-                                {user.groups?.map(g => (
-                                  <span key={g} className="text-xs text-muted-foreground bg-muted/40 px-2 py-0.5 rounded-full border border-border/40">{g}</span>
-                                ))}
-                              </div>
-                            </TableCell>
-                            {isAdmin && (
-                              <TableCell className="text-right">
-                                <div className="flex items-center justify-end gap-1">
-                                  <Button variant="ghost" size="sm" onClick={() => openEdit(user as any)}>
-                                    {t('common.edit')}
-                                  </Button>
-                                  <motion.button
-                                    whileHover={{ scale: 1.15, color: 'hsl(var(--destructive))' }}
-                                    whileTap={{ scale: 0.9 }}
-                                    onClick={() => handleDelete(user.id)}
-                                    className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground p-1.5 rounded"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </motion.button>
-                                </div>
-                              </TableCell>
-                            )}
-                          </motion.tr>
-                        ))}
-                      </AnimatePresence>
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+            {isLoading ? (
+              [1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)
+            ) : users?.length === 0 ? (
+              <div className="text-center py-16 text-muted-foreground border border-dashed border-border/50 rounded-xl">
+                <Users2 className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                <p className="font-medium text-sm">{t('users.noUsersYet')}</p>
+              </div>
+            ) : (
+              <AnimatePresence initial={false}>
+                {(users as UserListUser[])?.map((user, i) => (
+                  <UserCard
+                    key={user.id}
+                    user={user}
+                    index={i}
+                    isAdmin={isAdmin}
+                    onEdit={openEdit}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </AnimatePresence>
+            )}
           </motion.div>
         </TabsContent>
 
@@ -890,6 +949,7 @@ export default function Users() {
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-1">
+              {/* Roblox ID */}
               <div>
                 <label className="text-sm font-medium mb-1.5 block">
                   {t('users.robloxUserId')} <span className="text-destructive">*</span>
@@ -907,6 +967,7 @@ export default function Users() {
                 </p>
               </div>
 
+              {/* Roblox preview */}
               <AnimatePresence>
                 {newRobloxId.length >= 4 && (
                   <motion.div
@@ -961,6 +1022,7 @@ export default function Users() {
                 )}
               </AnimatePresence>
 
+              {/* Role */}
               <div>
                 <label className="text-sm font-medium mb-1.5 block">{t('users.role')}</label>
                 <Select value={newRole} onValueChange={(v: 'admin' | 'collaborator') => setNewRole(v)}>
@@ -975,6 +1037,24 @@ export default function Users() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Discord */}
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">
+                  {t('users.discord')}
+                  <span className="text-xs text-muted-foreground font-normal ml-1">{t('users.discordOptional')}</span>
+                </label>
+                <div className="relative">
+                  <MessageSquare className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
+                  <Input
+                    placeholder={t('users.discordPlaceholder')}
+                    value={newDiscord}
+                    onChange={e => setNewDiscord(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+              </div>
+
               {addError && (
                 <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">
                   <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />{addError}
@@ -996,6 +1076,7 @@ export default function Users() {
               <DialogTitle>{t('users.editTitle')} {editingUser?.robloxDisplayName || editingUser?.robloxUsername}</DialogTitle>
             </DialogHeader>
             <div className="space-y-5 pt-2">
+              {/* Role */}
               <div>
                 <label className="text-sm font-medium mb-2 block">{t('users.role')}</label>
                 <Select value={role} onValueChange={(v: 'admin' | 'collaborator') => setRole(v)}>
@@ -1011,6 +1092,21 @@ export default function Users() {
                 </Select>
               </div>
 
+              {/* Discord */}
+              <div>
+                <label className="text-sm font-medium mb-2 block">{t('users.discord')}</label>
+                <div className="relative">
+                  <MessageSquare className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50" />
+                  <Input
+                    placeholder={t('users.discordPlaceholder')}
+                    value={discordUsername}
+                    onChange={e => setDiscordUsername(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+              </div>
+
+              {/* Subroles */}
               <div>
                 <label className="text-sm font-medium mb-2 block">{t('users.subroles')}</label>
                 <div className="flex flex-wrap gap-2 mb-2">
@@ -1020,11 +1116,10 @@ export default function Users() {
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => toggleSubrole(sr)}
-                      className={`text-xs px-2 py-1 rounded-full border transition-colors ${
-                        subroles.includes(sr)
-                          ? getSubroleClasses(sr)
-                          : 'border-border/60 text-muted-foreground hover:border-primary/30'
-                      }`}>
+                      className={cn(
+                        "text-xs px-2 py-1 rounded-full border transition-colors",
+                        subroles.includes(sr) ? getSubroleClasses(sr) : 'border-border/60 text-muted-foreground hover:border-primary/30'
+                      )}>
                       {sr}
                     </motion.button>
                   ))}
@@ -1042,7 +1137,7 @@ export default function Users() {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.9 }}
                         onClick={() => toggleSubrole(sr)}
-                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-opacity hover:opacity-70 ${getSubroleClasses(sr)}`}>
+                        className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-opacity hover:opacity-70", getSubroleClasses(sr))}>
                         {sr} ×
                       </motion.button>
                     ))}
@@ -1050,6 +1145,7 @@ export default function Users() {
                 )}
               </div>
 
+              {/* Groups */}
               <div>
                 <label className="text-sm font-medium mb-2 block">{t('users.groups')}</label>
                 <div className="flex flex-wrap gap-2 mb-2">
@@ -1059,7 +1155,10 @@ export default function Users() {
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       onClick={() => toggleGroup(g)}
-                      className={`text-xs px-2 py-1 rounded-full border transition-colors ${groups.includes(g) ? 'bg-blue-500/20 border-blue-500/40 text-blue-400' : 'border-border/60 text-muted-foreground hover:border-blue-500/30'}`}>
+                      className={cn(
+                        "text-xs px-2 py-1 rounded-full border transition-colors",
+                        groups.includes(g) ? 'bg-blue-500/20 border-blue-500/40 text-blue-400' : 'border-border/60 text-muted-foreground hover:border-blue-500/30'
+                      )}>
                       {g}
                     </motion.button>
                   ))}
