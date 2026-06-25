@@ -8,12 +8,14 @@ import groupsRouter from "./groups";
 import teamsRouter from "./teams";
 import userGroupsRouter from "./user-groups";
 import maintenanceRouter from "./maintenance";
+import subrolesRouter from "./subroles";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
 router.use(maintenanceRouter);
+router.use(subrolesRouter);
 router.use(gamesRouter);
 router.use(usersRouter);
 router.use(planningRouter);

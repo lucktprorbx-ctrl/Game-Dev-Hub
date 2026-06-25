@@ -595,6 +595,13 @@ function UserCard({
               )}
             </div>
           )}
+          {/* Discord inline */}
+          {user.discordUsername && (
+            <div className="flex items-center gap-1 mt-0.5">
+              <MessageSquare className="w-2.5 h-2.5 text-indigo-400 flex-shrink-0" />
+              <span className="text-[10px] text-muted-foreground/70 truncate">{user.discordUsername}</span>
+            </div>
+          )}
         </div>
 
         {/* Actions */}
@@ -1058,11 +1065,6 @@ export default function Users() {
               <Users2 className="w-3.5 h-3.5" /> {t('users.groupsTab')}
             </TabsTrigger>
           )}
-          {isAdmin && (
-            <TabsTrigger value="settings" className="gap-1.5 flex-1 sm:flex-none">
-              <Wrench className="w-3.5 h-3.5" /> {t('maintenance.settingsTab')}
-            </TabsTrigger>
-          )}
         </TabsList>
 
         <TabsContent value="members">
@@ -1210,17 +1212,6 @@ export default function Users() {
               transition={{ delay: 0.1, type: 'spring', stiffness: 200, damping: 22 }}
             >
               <GroupsManagement />
-            </motion.div>
-          </TabsContent>
-        )}
-        {isAdmin && (
-          <TabsContent value="settings">
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1, type: 'spring', stiffness: 200, damping: 22 }}
-            >
-              <MaintenanceSettings />
             </motion.div>
           </TabsContent>
         )}

@@ -9,6 +9,7 @@ import Users from '@/pages/users';
 import Planning from '@/pages/planning';
 import Privacy from '@/pages/privacy';
 import Terms from '@/pages/terms';
+import SettingsPage from '@/pages/settings';
 import MaintenancePage from '@/pages/maintenance';
 import { useMaintenanceMode } from '@/hooks/useMaintenanceMode';
 
@@ -56,6 +57,9 @@ export function AppRouter() {
       </Route>
       <Route path="/users">
         <ProtectedRoute component={Users} adminOnly />
+      </Route>
+      <Route path="/settings">
+        <ProtectedRoute component={SettingsPage} adminOnly />
       </Route>
 
       {/* Protected Collaborator Routes */}

@@ -13,6 +13,7 @@ import {
   X,
   FileText,
   ChevronRight,
+  Settings,
 } from 'lucide-react';
 import { useLogout } from '@workspace/api-client-react';
 import { getSubroleClasses, getSubroleDot } from '@/lib/role-colors';
@@ -36,6 +37,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
     { href: '/games', icon: Gamepad2, label: t('nav.games'), adminOnly: false },
     { href: '/planning', icon: CalendarDays, label: t('nav.planning'), adminOnly: false },
     { href: '/users', icon: Users, label: t('nav.users'), adminOnly: true },
+    { href: '/settings', icon: Settings, label: t('nav.settings'), adminOnly: true },
   ];
 
   const visibleItems = navItems.filter(item => !item.adminOnly || isAdmin);
