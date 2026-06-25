@@ -81,8 +81,8 @@ router.post("/user-groups", requireAuth, async (req, res): Promise<void> => {
 
   const [group] = await db.insert(userGroupsTable).values({
     name: name.trim(),
-    description: typeof description === "string" ? description.trim() || null : null,
-    color: typeof color === "string" ? color.trim() || null : "#6366f1",
+    description: typeof description === "string" ? description.trim() || undefined : undefined,
+    color: typeof color === "string" ? color.trim() || undefined : undefined,
   }).returning();
 
   res.status(201).json({ ...group!, createdAt: group!.createdAt.toISOString(), members: [] });

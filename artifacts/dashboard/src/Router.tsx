@@ -9,18 +9,25 @@ import Users from '@/pages/users';
 import Planning from '@/pages/planning';
 import Privacy from '@/pages/privacy';
 import Terms from '@/pages/terms';
+import MaintenancePage from '@/pages/maintenance';
+import { useMaintenanceMode } from '@/hooks/useMaintenanceMode';
 
 function ProtectedRoute({ component: Component, adminOnly = false, ...rest }: any) {
   const { isAuthenticated, user, isLoading } = useAuth();
+  const { data: maintenance } = useMaintenanceMode();
 
   if (isLoading) return <div className="p-8">Loading...</div>;
-  
+
   if (!isAuthenticated) {
     return <Redirect to="/login" />;
   }
 
   if (adminOnly && user?.role !== 'admin') {
     return <Redirect to="/planning" />;
+  }
+
+  if (maintenance?.maintenanceMode && user?.role !== 'admin') {
+    return <MaintenancePage message={maintenance.message} />;
   }
 
   return (
@@ -36,7 +43,7 @@ export function AppRouter() {
       <Route path="/login" component={Login} />
       <Route path="/privacy" component={Privacy} />
       <Route path="/terms" component={Terms} />
-      
+
       {/* Protected Admin Routes */}
       <Route path="/">
         <ProtectedRoute component={Dashboard} adminOnly />

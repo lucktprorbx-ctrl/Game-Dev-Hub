@@ -16,12 +16,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import {
   Shield, Users2, UserPlus, Trash2, AlertCircle, CheckCircle2, Ban, Plus, X, Palette,
-  MessageSquare, Edit2, ChevronDown, ChevronUp, Search,
+  MessageSquare, Edit2, ChevronDown, ChevronUp, Search, Wrench, Power,
 } from 'lucide-react';
 import { getSubroleClasses } from '@/lib/role-colors';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMaintenanceMode } from '@/hooks/useMaintenanceMode';
 import { cn } from '@/lib/utils';
 
 function RoleBadge({ role }: { role: string }) {
@@ -679,6 +680,164 @@ function UserCard({
   );
 }
 
+// ── Maintenance Settings Panel ────────────────────────────────────────────────
+
+function MaintenanceSettings() {
+  const { t } = useTranslation();
+  const { data: status, refetch } = useMaintenanceMode();
+  const [enabled, setEnabled] = useState(false);
+  const [message, setMessage] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (status) {
+      setEnabled(status.maintenanceMode);
+      setMessage(status.message ?? '');
+    }
+  }, [status]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaved(false);
+    try {
+      await fetch('/api/admin/maintenance', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ maintenanceMode: enabled, message: message.trim() || null }),
+        credentials: 'include',
+      });
+      await refetch();
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const isDirty = status
+    ? (enabled !== status.maintenanceMode || (message.trim() || null) !== (status.message ?? null))
+    : false;
+
+  return (
+    <div className="space-y-5">
+      {/* Section header */}
+      <div className="flex items-start gap-3">
+        <div className="w-9 h-9 rounded-lg bg-amber-500/15 flex items-center justify-center flex-shrink-0">
+          <Wrench className="w-4 h-4 text-amber-400" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-sm">{t('maintenance.maintenanceSection')}</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">{t('maintenance.maintenanceSectionDesc')}</p>
+        </div>
+      </div>
+
+      {/* Toggle card */}
+      <Card className={cn(
+        "border transition-colors",
+        enabled ? "border-amber-500/30 bg-amber-500/5" : "border-border/50"
+      )}>
+        <CardContent className="p-5 space-y-5">
+          {/* Toggle row */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <Power className={cn("w-4 h-4", enabled ? "text-amber-400" : "text-muted-foreground")} />
+                <span className="text-sm font-medium">{t('maintenance.toggle')}</span>
+                <span className={cn(
+                  "text-[10px] px-2 py-0.5 rounded-full font-semibold border",
+                  enabled
+                    ? "bg-amber-500/20 text-amber-400 border-amber-500/40"
+                    : "bg-muted/50 text-muted-foreground border-border/50"
+                )}>
+                  {enabled ? t('maintenance.enabled') : t('maintenance.disabled')}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">{t('maintenance.toggleDesc')}</p>
+            </div>
+            {/* Custom toggle button */}
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setEnabled(v => !v)}
+              className={cn(
+                "relative w-12 h-6 rounded-full transition-colors flex-shrink-0",
+                enabled ? "bg-amber-500" : "bg-muted"
+              )}
+            >
+              <motion.div
+                className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow"
+                animate={{ x: enabled ? 26 : 2 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+              />
+            </motion.button>
+          </div>
+
+          {/* Message input */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">
+              {t('maintenance.messageLabel')}
+            </label>
+            <Input
+              placeholder={t('maintenance.messagePlaceholder')}
+              value={message}
+              onChange={e => setMessage(e.target.value)}
+              className="text-sm bg-muted/20"
+            />
+          </div>
+
+          {/* Save button */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-xs text-muted-foreground/60">
+              {status?.updatedAt && (
+                <span>
+                  {t('maintenance.lastUpdated')}: {new Date(status.updatedAt).toLocaleString()}
+                </span>
+              )}
+            </div>
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
+              <Button
+                size="sm"
+                onClick={handleSave}
+                disabled={saving || (!isDirty && !saved)}
+                className={cn(saved && "bg-green-600 hover:bg-green-600")}
+              >
+                {saving ? (
+                  <>{t('maintenance.saving')}</>
+                ) : saved ? (
+                  <><CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />{t('maintenance.saved')}</>
+                ) : (
+                  t('maintenance.save')
+                )}
+              </Button>
+            </motion.div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Live preview when enabled */}
+      {enabled && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4"
+        >
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-amber-300">{t('maintenance.adminBanner')}</p>
+              {message && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Message: "{message}"
+                </p>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Users Page ───────────────────────────────────────────────────────────
 
 export default function Users() {
@@ -899,6 +1058,11 @@ export default function Users() {
               <Users2 className="w-3.5 h-3.5" /> {t('users.groupsTab')}
             </TabsTrigger>
           )}
+          {isAdmin && (
+            <TabsTrigger value="settings" className="gap-1.5 flex-1 sm:flex-none">
+              <Wrench className="w-3.5 h-3.5" /> {t('maintenance.settingsTab')}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="members">
@@ -1046,6 +1210,17 @@ export default function Users() {
               transition={{ delay: 0.1, type: 'spring', stiffness: 200, damping: 22 }}
             >
               <GroupsManagement />
+            </motion.div>
+          </TabsContent>
+        )}
+        {isAdmin && (
+          <TabsContent value="settings">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, type: 'spring', stiffness: 200, damping: 22 }}
+            >
+              <MaintenanceSettings />
             </motion.div>
           </TabsContent>
         )}
