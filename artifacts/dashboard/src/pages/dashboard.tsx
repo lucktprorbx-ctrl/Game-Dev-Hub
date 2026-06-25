@@ -5,7 +5,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { PageTransition } from '@/components/ui/page-transition';
 import { useAuth } from '@/contexts/AuthContext';
-import { Users, Columns2, CalendarDays, Shield, Eye, Gamepad2, Lock, TrendingUp } from 'lucide-react';
+import {
+  Users, Columns2, CalendarDays, Shield, Eye, Gamepad2, Lock,
+  TrendingUp, Sparkles, ArrowUpRight, Settings, Users2,
+} from 'lucide-react';
 import { motion, animate } from 'framer-motion';
 import { Link } from 'wouter';
 import { useTranslation } from 'react-i18next';
@@ -64,7 +67,8 @@ export default function Dashboard() {
       icon: Users,
       iconColor: 'text-amber-400',
       bg: 'bg-amber-500/10',
-      accent: 'hover:border-amber-500/30 hover:shadow-amber-500/5',
+      glowColor: 'via-amber-500/60',
+      accent: 'hover:border-amber-500/30',
     },
     {
       label: t('dashboard.planningBoards'),
@@ -73,22 +77,40 @@ export default function Dashboard() {
       icon: Columns2,
       iconColor: 'text-indigo-400',
       bg: 'bg-indigo-500/10',
-      accent: 'hover:border-indigo-500/30 hover:shadow-indigo-500/5',
+      glowColor: 'via-indigo-500/60',
+      accent: 'hover:border-indigo-500/30',
     },
   ];
 
   const publicGames = group?.games.filter(g => !g.isPrivate) ?? [];
   const totalPlaying = publicGames.reduce((s, g) => s + (g.playing ?? 0), 0);
 
+  const quickActions = [
+    { icon: CalendarDays, label: t('nav.planning'), desc: 'Sprints & boards', href: '/planning', color: 'hover:text-indigo-400' },
+    { icon: Users2, label: t('nav.users'), desc: 'Access control', href: '/users', color: 'hover:text-amber-400', adminOnly: true },
+    { icon: Gamepad2, label: t('nav.games'), desc: 'Game stats', href: '/games', color: 'hover:text-emerald-400' },
+    { icon: Settings, label: t('nav.settings'), desc: 'Studio config', href: '/settings', color: 'hover:text-sky-400', adminOnly: true },
+  ];
+  const visibleActions = quickActions.filter(a => !a.adminOnly || isAdmin);
+
   return (
     <PageTransition>
       <div className="flex flex-col gap-8">
-        {/* Welcome header */}
+
+        {/* Hero header */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: 'easeOut' }}
+          className="relative"
         >
+          {/* Ambient glow behind header */}
+          <div className="absolute -top-6 -left-6 w-72 h-32 rounded-full blur-[80px] pointer-events-none bg-primary/8" />
+
+          <div className="flex items-center gap-2 mb-1.5 text-primary">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span className="text-xs font-semibold uppercase tracking-widest">Studio Operations</span>
+          </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
             {t('dashboard.welcomeBack', { name: '\x00' }).split('\x00')[0]}
             <motion.span
@@ -101,8 +123,40 @@ export default function Dashboard() {
             </motion.span>
             {t('dashboard.welcomeBack', { name: '\x00' }).split('\x00')[1]}
           </h1>
-          <p className="text-muted-foreground mt-1">{t('dashboard.subtitle')}</p>
+          <p className="text-muted-foreground mt-1 text-sm">{t('dashboard.subtitle')}</p>
+
+          {/* Divider with fade */}
+          <div className="mt-5 h-px w-full bg-gradient-to-r from-border/60 via-border/20 to-transparent" />
         </motion.div>
+
+        {/* Quick Actions */}
+        {visibleActions.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.4 }}
+            className="grid grid-cols-2 sm:grid-cols-4 gap-3"
+          >
+            {visibleActions.map((action) => (
+              <Link key={action.href} href={action.href}>
+                <motion.div
+                  whileHover={{ y: -2, scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                  className={`flex items-center gap-3 p-3.5 rounded-xl border border-border bg-card cursor-pointer transition-colors group hover:border-border/80 hover:shadow-md hover:shadow-black/20`}
+                >
+                  <div className={`w-9 h-9 rounded-lg bg-muted flex items-center justify-center text-muted-foreground transition-colors ${action.color} flex-shrink-0`}>
+                    <action.icon className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium truncate">{action.label}</div>
+                    <div className="text-[11px] text-muted-foreground truncate">{action.desc}</div>
+                  </div>
+                </motion.div>
+              </Link>
+            ))}
+          </motion.div>
+        )}
 
         {/* Stats row */}
         {isLoading ? (
@@ -126,19 +180,22 @@ export default function Dashboard() {
                   whileTap={{ scale: 0.99 }}
                   transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                 >
-                  <Card className={`transition-all duration-200 hover:shadow-lg ${stat.accent}`}>
+                  <Card className={`transition-all duration-200 hover:shadow-lg ${stat.accent} relative overflow-hidden group`}>
+                    {/* Glowing bottom border on hover */}
+                    <div className={`absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent ${stat.glowColor} to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-sm font-medium text-muted-foreground">{stat.label}</CardTitle>
                       <motion.div
                         whileHover={{ rotate: [0, -8, 8, 0], scale: 1.1 }}
                         transition={{ duration: 0.4 }}
-                        className={`w-8 h-8 rounded-lg ${stat.bg} flex items-center justify-center`}
+                        className={`w-8 h-8 rounded-lg ${stat.bg} flex items-center justify-center relative`}
                       >
-                        <stat.icon className={`h-4 w-4 ${stat.iconColor}`} />
+                        <div className={`absolute inset-0 rounded-lg blur-md opacity-20 ${stat.bg}`} />
+                        <stat.icon className={`h-4 w-4 ${stat.iconColor} relative z-10`} />
                       </motion.div>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-3xl font-bold">
+                      <div className="text-3xl font-bold tracking-tight">
                         <CountUp to={stat.value} />
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">{stat.sub}</p>
@@ -156,7 +213,8 @@ export default function Dashboard() {
                   whileTap={{ scale: 0.99 }}
                   transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                 >
-                  <Card className="transition-all duration-200 hover:shadow-lg hover:border-emerald-500/30 hover:shadow-emerald-500/5">
+                  <Card className="transition-all duration-200 hover:shadow-lg hover:border-emerald-500/30 relative overflow-hidden group">
+                    <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                       <CardTitle className="text-sm font-medium text-muted-foreground">{t('dashboard.livePlayers')}</CardTitle>
                       <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center relative">
@@ -169,7 +227,7 @@ export default function Dashboard() {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-3xl font-bold">
+                      <div className="text-3xl font-bold tracking-tight">
                         <CountUp to={totalPlaying} />
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
@@ -258,10 +316,16 @@ export default function Dashboard() {
                       whileHover={{ y: -3, scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
-                      <Card className={`overflow-hidden h-full transition-all duration-200 hover:shadow-md ${game.isPrivate ? 'opacity-60' : 'hover:border-primary/20 hover:shadow-primary/5'}`}>
+                      <Card className={`overflow-hidden h-full transition-all duration-200 ${game.isPrivate ? 'opacity-60' : 'hover:border-primary/20 hover:shadow-md hover:shadow-primary/5 group'}`}>
                         {game.thumbnailUrl ? (
                           <div className="relative overflow-hidden">
-                            <img src={game.thumbnailUrl} alt={game.name} className="w-full h-32 object-cover" />
+                            <img
+                              src={game.thumbnailUrl}
+                              alt={game.name}
+                              className="w-full h-32 object-cover transition-transform duration-700 group-hover:scale-105"
+                            />
+                            {/* Gradient overlay */}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                             {game.isPrivate && (
                               <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                                 <Badge variant="outline" className="bg-black/60 border-white/20 text-white text-xs gap-1">
@@ -333,8 +397,8 @@ export default function Dashboard() {
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25, type: 'spring', stiffness: 200, damping: 22 }}>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-semibold">{t('dashboard.team')}</h2>
-              <Link href="/users" className="text-xs text-muted-foreground hover:text-primary transition-colors">
-                {t('dashboard.manage')}
+              <Link href="/users" className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
+                {t('dashboard.manage')} <ArrowUpRight className="w-3 h-3" />
               </Link>
             </div>
             <Card>
@@ -382,8 +446,8 @@ export default function Dashboard() {
           <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35, type: 'spring', stiffness: 200, damping: 22 }}>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-semibold">{t('dashboard.recentBoards')}</h2>
-              <Link href="/planning" className="text-xs text-muted-foreground hover:text-primary transition-colors">
-                {t('dashboard.viewAll')}
+              <Link href="/planning" className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
+                {t('dashboard.viewAll')} <ArrowUpRight className="w-3 h-3" />
               </Link>
             </div>
             <motion.div
@@ -400,7 +464,8 @@ export default function Dashboard() {
                   whileTap={{ scale: 0.98 }}
                 >
                   <Link href="/planning">
-                    <Card className="hover:border-primary/30 cursor-pointer transition-colors group hover:shadow-md hover:shadow-primary/5">
+                    <Card className="hover:border-primary/30 cursor-pointer transition-colors group hover:shadow-md hover:shadow-primary/5 overflow-hidden relative">
+                      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                       <CardContent className="p-4">
                         <div className="flex items-center gap-2 mb-1">
                           <Columns2 className="w-4 h-4 text-indigo-400 flex-shrink-0" />

@@ -187,7 +187,6 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
                           )}
                           style={{
                             backgroundColor: th.primary,
-                            ringColor: th.primary,
                           }}
                         />
                         <span className="flex-1 text-left font-medium">

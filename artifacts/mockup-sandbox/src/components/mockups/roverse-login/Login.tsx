@@ -1,6 +1,5 @@
 import React from "react";
-import { SiRoblox } from "react-icons/si";
-import { CheckCircle2, LayoutDashboard, Shield, Activity } from "lucide-react";
+import { LayoutDashboard, Shield, Activity, Gamepad2, Layers } from "lucide-react";
 
 export function Login() {
   const styles = {
@@ -80,7 +79,7 @@ export function Login() {
                 boxShadow: "0 0 20px hsl(var(--primary) / 0.3)"
               }}
             >
-              <SiRoblox className="w-6 h-6 text-black" />
+              <Layers className="w-6 h-6 text-black" />
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-white">
               RoCheck
@@ -140,8 +139,8 @@ export function Login() {
           />
 
           <div className="flex flex-col items-center text-center mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-white/5 border flex items-center justify-center mb-6" style={{ borderColor: "hsl(var(--border))" }}>
-              <SiRoblox className="w-8 h-8 text-white" />
+            <div className="w-16 h-16 rounded-2xl bg-white/5 border flex items-center justify-center mb-6" style={{ borderColor: "hsl(var(--border))", boxShadow: "0 0 20px hsl(var(--primary) / 0.15)" }}>
+              <Layers className="w-8 h-8" style={{ color: "hsl(var(--primary))" }} />
             </div>
             <h2 className="text-2xl md:text-3xl font-bold text-white mb-2 tracking-tight">Welcome Back</h2>
             <p className="text-white/50 text-sm md:text-base">Sign in to your RoVerse workspace</p>
@@ -155,7 +154,7 @@ export function Login() {
             }}
           >
             <div className="absolute inset-0 bg-white/20 translate-y-[-100%] group-hover:translate-y-[100%] transition-transform duration-700 ease-in-out" />
-            <SiRoblox className="w-5 h-5" />
+            <Gamepad2 className="w-5 h-5" />
             Continue with Roblox
           </button>
 

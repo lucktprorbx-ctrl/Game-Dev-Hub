@@ -36,15 +36,20 @@ interface SelectedBoard {
 }
 
 const BOARD_COLORS = [
-  'bg-amber-500/20 border-amber-500/30',
-  'bg-indigo-500/20 border-indigo-500/30',
-  'bg-emerald-500/20 border-emerald-500/30',
-  'bg-pink-500/20 border-pink-500/30',
-  'bg-sky-500/20 border-sky-500/30',
-  'bg-violet-500/20 border-violet-500/30',
+  'hover:border-amber-500/40 hover:shadow-[0_0_20px_rgba(245,158,11,0.10)]',
+  'hover:border-indigo-500/40 hover:shadow-[0_0_20px_rgba(99,102,241,0.10)]',
+  'hover:border-emerald-500/40 hover:shadow-[0_0_20px_rgba(16,185,129,0.10)]',
+  'hover:border-pink-500/40 hover:shadow-[0_0_20px_rgba(236,72,153,0.10)]',
+  'hover:border-sky-500/40 hover:shadow-[0_0_20px_rgba(14,165,233,0.10)]',
+  'hover:border-violet-500/40 hover:shadow-[0_0_20px_rgba(139,92,246,0.10)]',
 ];
 
 const DOT_COLORS = [
+  'bg-amber-400', 'bg-indigo-400', 'bg-emerald-400',
+  'bg-pink-400', 'bg-sky-400', 'bg-violet-400',
+];
+
+const STRIP_COLORS = [
   'bg-amber-400', 'bg-indigo-400', 'bg-emerald-400',
   'bg-pink-400', 'bg-sky-400', 'bg-violet-400',
 ];
@@ -170,7 +175,10 @@ export default function Planning() {
     <PageTransition>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold tracking-tight">{t('planning.title')}</h1>
-        <Button size="sm" className="gap-1.5" onClick={() => setNewBoardDialog(true)}>
+        <Button
+          className="gap-1.5 rounded-full px-5 shadow-[0_0_15px_hsl(var(--primary)/0.35)]"
+          onClick={() => setNewBoardDialog(true)}
+        >
           <Plus className="w-4 h-4" /> {t('planning.newBoard')}
         </Button>
       </div>
@@ -194,7 +202,7 @@ export default function Planning() {
                 variants={{ hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }}
               >
                 <Card
-                  className={`cursor-pointer group hover:border-primary/30 transition-all border ${BOARD_COLORS[idx % BOARD_COLORS.length]}`}
+                  className={`cursor-pointer group transition-all border relative overflow-hidden ${BOARD_COLORS[idx % BOARD_COLORS.length]}`}
                   onClick={() => setSelectedBoard({
                     id: board.id,
                     name: board.name,
@@ -203,11 +211,13 @@ export default function Planning() {
                     teamName: board.teamName ?? null,
                   })}
                 >
-                  <CardContent className="p-5">
+                  {/* Left color strip */}
+                  <div className={`absolute left-0 top-0 bottom-0 w-[3px] ${STRIP_COLORS[idx % STRIP_COLORS.length]}`} />
+                  <CardContent className="p-5 pl-6">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2">
-                        <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${DOT_COLORS[idx % DOT_COLORS.length]}`} />
                         <Columns2 className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">Board</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         {boardTeam ? (
@@ -227,14 +237,16 @@ export default function Planning() {
                         </button>
                       </div>
                     </div>
-                    <h3 className="font-semibold text-base mb-1 group-hover:text-primary transition-colors">{board.name}</h3>
+                    <h3 className="font-semibold text-base mb-1.5 group-hover:text-primary transition-colors">{board.name}</h3>
                     {board.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{board.description}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-2 mb-3 leading-relaxed">{board.description}</p>
                     )}
-                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-auto">
-                      <CalendarDays className="w-3 h-3" />
-                      {new Date(board.createdAt).toLocaleDateString()}
-                    </p>
+                    <div className="pt-3 border-t border-dashed border-border/40">
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <CalendarDays className="w-3 h-3" />
+                        {new Date(board.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
               </motion.div>
