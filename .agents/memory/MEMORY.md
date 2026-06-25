@@ -3,3 +3,5 @@
 - [Roblox CCU API](roblox-api.md) — public endpoint games.roblox.com/v1/games?universeIds={id} gives playing/visits/favoritedCount; revenue is estimated (no public API).
 - [Orval generated hook pattern](orval-hooks.md) — useGetMe/useGetGame etc require queryKey in query options in Tanstack Query v5; use getXxxQueryKey() helper.
 - [dueDate text column](duedate-column.md) — tasksTable.dueDate is text("due_date"), Orval generates Date type from format:date; convert with String() before insert/update.
+- [Theme system](theme-system.md) — 5 themes (obsidian/amber, midnight/blue, emerald/green, rose/pink, violet/purple) via data-theme on :root; ThemeProvider wraps above QueryClientProvider in App.tsx.
+- [Users API security](users-api-security.md) — ROBLOX_ID_PATTERN /^\d{1,20}$/, DISCORD_USERNAME_PATTERN /^[a-zA-Z0-9_.]{1,32}$/, max 20 array items, 50 chars per item; explicit field-by-field updates in PATCH, no as-any casts.

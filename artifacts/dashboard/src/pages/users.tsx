@@ -16,7 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import {
   Shield, Users2, UserPlus, Trash2, AlertCircle, CheckCircle2, Ban, Plus, X, Palette,
-  MessageSquare, Edit2, ChevronDown, ChevronUp, Search, Wrench, Power,
+  MessageSquare, Edit2, ChevronDown, ChevronUp, Search, Wrench, Power, LayoutGrid, List,
+  Calendar, Hash,
 } from 'lucide-react';
 import { getSubroleClasses } from '@/lib/role-colors';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -25,16 +26,50 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useMaintenanceMode } from '@/hooks/useMaintenanceMode';
 import { cn } from '@/lib/utils';
 
+/* ── Types ────────────────────────────────────────────────────────────────── */
+
+type UserListUser = {
+  id: number;
+  robloxUsername: string;
+  robloxDisplayName?: string | null;
+  robloxAvatarUrl?: string | null;
+  discordUsername?: string | null;
+  role: 'admin' | 'collaborator';
+  subroles: string[];
+  groups: string[];
+  createdAt: string;
+};
+
+type ViewMode = 'grid' | 'list';
+
+/* ── Constants ────────────────────────────────────────────────────────────── */
+
+const SUBROLE_OPTIONS = ['Scripter', 'UI Maker', 'Builder', 'Modeler', 'Animator', 'Sound Designer', 'Game Designer', 'Investor', 'Content Creator Manager'];
+const GROUP_OPTIONS = ['Core Team', 'Dev Team', 'Art Team', 'Marketing Team', 'Investors'];
+const TEAM_COLORS = ['#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6', '#10b981', '#ec4899', '#14b8a6', '#f97316'];
+const GROUP_COLORS = ['#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6', '#10b981', '#ec4899', '#14b8a6', '#f97316'];
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 8 },
+  show: (i: number) => ({
+    opacity: 1, y: 0,
+    transition: { type: 'spring' as const, stiffness: 260, damping: 22, delay: i * 0.04 },
+  }),
+  exit: { opacity: 0, scale: 0.97, transition: { duration: 0.15 } },
+};
+
+/* ── Small components ─────────────────────────────────────────────────────── */
+
 function RoleBadge({ role }: { role: string }) {
   if (role === 'admin') {
     return (
-      <Badge className="bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 gap-1 text-[10px]">
+      <Badge className="bg-red-500/15 text-red-400 border border-red-500/25 hover:bg-red-500/25 gap-1 text-[10px] px-2 py-0.5 font-semibold">
         <Shield className="w-2.5 h-2.5" /> Admin
       </Badge>
     );
   }
   return (
-    <Badge className="bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30 gap-1 text-[10px]">
+    <Badge className="bg-blue-500/15 text-blue-400 border border-blue-500/25 hover:bg-blue-500/25 gap-1 text-[10px] px-2 py-0.5 font-semibold">
       <Users2 className="w-2.5 h-2.5" /> Collab.
     </Badge>
   );
@@ -48,24 +83,381 @@ function SubroleBadge({ subrole }: { subrole: string }) {
   );
 }
 
-const SUBROLE_OPTIONS = ['Scripter', 'UI Maker', 'Builder', 'Modeler', 'Animator', 'Sound Designer', 'Game Designer', 'Investor', 'Content Creator Manager'];
-const GROUP_OPTIONS = ['Core Team', 'Dev Team', 'Art Team', 'Marketing Team', 'Investors'];
+/* ── User Card (Grid mode) ────────────────────────────────────────────────── */
 
-const TEAM_COLORS = [
-  '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6',
-  '#10b981', '#ec4899', '#14b8a6', '#f97316',
-];
+function UserCardGrid({
+  user, index, isAdmin, onEdit, onDelete,
+}: {
+  user: UserListUser;
+  index: number;
+  isAdmin: boolean;
+  onEdit: (user: UserListUser) => void;
+  onDelete: (id: number) => void;
+}) {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+  const joinedDate = new Date(user.createdAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+  const isAdminRole = user.role === 'admin';
 
-const cardVariants = {
-  hidden: { opacity: 0, y: 8 },
-  show: (i: number) => ({
-    opacity: 1, y: 0,
-    transition: { type: 'spring' as const, stiffness: 260, damping: 22, delay: i * 0.04 },
-  }),
-  exit: { opacity: 0, scale: 0.97, transition: { duration: 0.15 } },
-};
+  return (
+    <motion.div
+      custom={index}
+      variants={cardVariants}
+      initial="hidden"
+      animate="show"
+      exit="exit"
+      className={cn(
+        "group relative bg-card border rounded-2xl overflow-hidden transition-all duration-200",
+        "hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/25",
+        isAdminRole ? "border-red-500/20 hover:border-red-500/35" : "border-border/50 hover:border-border"
+      )}
+    >
+      {/* Role accent strip */}
+      <div className={cn(
+        "h-0.5 w-full",
+        isAdminRole
+          ? "bg-gradient-to-r from-red-500 via-orange-500 to-red-500"
+          : "bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-500"
+      )} />
 
-// ── Teams Management Component ────────────────────────────────────────────────
+      <div className="p-4 space-y-3.5">
+        {/* Avatar + info */}
+        <div className="flex items-start gap-3.5">
+          <div className="relative flex-shrink-0">
+            {user.robloxAvatarUrl ? (
+              <motion.img
+                src={user.robloxAvatarUrl}
+                alt=""
+                className={cn(
+                  "w-14 h-14 rounded-xl object-cover ring-2 bg-muted",
+                  isAdminRole ? "ring-red-500/30" : "ring-blue-500/20"
+                )}
+                whileHover={{ scale: 1.04 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+              />
+            ) : (
+              <div className={cn(
+                "w-14 h-14 rounded-xl flex items-center justify-center text-xl font-bold ring-2",
+                isAdminRole
+                  ? "bg-red-500/10 text-red-400 ring-red-500/20"
+                  : "bg-blue-500/10 text-blue-400 ring-blue-500/20"
+              )}>
+                {user.robloxUsername.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className={cn(
+              "absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-card flex items-center justify-center",
+              isAdminRole ? "bg-red-500" : "bg-blue-500"
+            )}>
+              {isAdminRole
+                ? <Shield className="w-2 h-2 text-white" />
+                : <Users2 className="w-2 h-2 text-white" />
+              }
+            </div>
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2 flex-wrap">
+              <div className="min-w-0">
+                <p className="font-bold text-sm leading-tight truncate">
+                  {user.robloxDisplayName || user.robloxUsername}
+                </p>
+                {user.robloxDisplayName && (
+                  <p className="text-[11px] text-muted-foreground/60 truncate mt-0.5">
+                    @{user.robloxUsername}
+                  </p>
+                )}
+              </div>
+              <RoleBadge role={user.role} />
+            </div>
+
+            {/* Subroles */}
+            {(user.subroles?.length ?? 0) > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {user.subroles.slice(0, 2).map(sr => (
+                  <SubroleBadge key={sr} subrole={sr} />
+                ))}
+                {user.subroles.length > 2 && (
+                  <span className="text-[10px] text-muted-foreground/60 self-center">
+                    +{user.subroles.length - 2}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Discord */}
+            {user.discordUsername && (
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <MessageSquare className="w-3 h-3 text-indigo-400 flex-shrink-0" />
+                <span className="text-[11px] text-muted-foreground/70 truncate">{user.discordUsername}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Groups */}
+        {(user.groups?.length ?? 0) > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {user.groups.slice(0, 3).map(g => (
+              <span key={g} className="px-2 py-0.5 rounded-full text-[10px] bg-muted/50 text-muted-foreground border border-border/40 font-medium">
+                {g}
+              </span>
+            ))}
+            {user.groups.length > 3 && (
+              <span className="text-[10px] text-muted-foreground/50 self-center">+{user.groups.length - 3}</span>
+            )}
+          </div>
+        )}
+
+        {/* Footer */}
+        <div className="flex items-center justify-between pt-2 border-t border-border/40">
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground/50">
+            <Calendar className="w-3 h-3" />
+            {joinedDate}
+          </div>
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={() => setExpanded(v => !v)}
+              className="p-1.5 text-muted-foreground/40 hover:text-muted-foreground rounded-lg hover:bg-muted/40 transition-colors"
+              title="Details"
+            >
+              {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+            {isAdmin && (
+              <>
+                <button
+                  onClick={() => onEdit(user)}
+                  className="p-1.5 text-muted-foreground/40 hover:text-primary rounded-lg hover:bg-primary/10 transition-colors"
+                  title={t('users.editUser')}
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => onDelete(user.id)}
+                  className="p-1.5 text-muted-foreground/30 hover:text-destructive rounded-lg hover:bg-destructive/10 transition-colors"
+                  title={t('users.deleteMember')}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Expanded details */}
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            className="overflow-hidden border-t border-border/40"
+          >
+            <div className="px-4 py-3 space-y-2 bg-muted/5">
+              {user.discordUsername && (
+                <div className="flex items-center gap-2 text-xs">
+                  <MessageSquare className="w-3 h-3 text-indigo-400 flex-shrink-0" />
+                  <span className="text-muted-foreground">{t('users.discordHandle')}:</span>
+                  <span className="font-medium">{user.discordUsername}</span>
+                </div>
+              )}
+              {(user.groups?.length ?? 0) > 0 && (
+                <div className="flex items-start gap-2 text-xs">
+                  <Users2 className="w-3 h-3 text-muted-foreground/60 flex-shrink-0 mt-0.5" />
+                  <span className="text-muted-foreground">{t('users.tableGroups')}:</span>
+                  <div className="flex flex-wrap gap-1">
+                    {user.groups.map(g => (
+                      <span key={g} className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[10px] border border-blue-500/20">{g}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {(user.subroles?.length ?? 0) > 1 && (
+                <div className="flex items-start gap-2 text-xs">
+                  <Palette className="w-3 h-3 text-muted-foreground/60 flex-shrink-0 mt-0.5" />
+                  <span className="text-muted-foreground">{t('users.tableSubroles')}:</span>
+                  <div className="flex flex-wrap gap-1">
+                    {user.subroles.map(sr => <SubroleBadge key={sr} subrole={sr} />)}
+                  </div>
+                </div>
+              )}
+              <div className="flex items-center gap-2 text-xs text-muted-foreground/50">
+                <Hash className="w-3 h-3" />
+                <span>ID: {user.id}</span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+/* ── User Card (List mode) ────────────────────────────────────────────────── */
+
+function UserCardList({
+  user, index, isAdmin, onEdit, onDelete,
+}: {
+  user: UserListUser;
+  index: number;
+  isAdmin: boolean;
+  onEdit: (user: UserListUser) => void;
+  onDelete: (id: number) => void;
+}) {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+  const joinedDate = new Date(user.createdAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+  const isAdminRole = user.role === 'admin';
+
+  return (
+    <motion.div
+      custom={index}
+      variants={cardVariants}
+      initial="hidden"
+      animate="show"
+      exit="exit"
+      className={cn(
+        "bg-card border rounded-xl overflow-hidden transition-colors",
+        isAdminRole ? "border-red-500/15 hover:border-red-500/30" : "border-border/50 hover:border-border/80"
+      )}
+    >
+      <div className="flex items-center gap-3 p-3 sm:p-4">
+        {/* Avatar */}
+        <div className="flex-shrink-0 relative">
+          {user.robloxAvatarUrl ? (
+            <img
+              src={user.robloxAvatarUrl}
+              alt=""
+              className={cn(
+                "w-10 h-10 sm:w-12 sm:h-12 rounded-xl object-cover ring-1 bg-muted",
+                isAdminRole ? "ring-red-500/25" : "ring-border/50"
+              )}
+            />
+          ) : (
+            <div className={cn(
+              "w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center font-bold text-sm ring-1",
+              isAdminRole
+                ? "bg-red-500/10 text-red-400 ring-red-500/20"
+                : "bg-primary/10 text-primary ring-border/50"
+            )}>
+              {user.robloxUsername.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <div className={cn(
+            "absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-card",
+            isAdminRole ? "bg-red-500" : "bg-blue-500"
+          )} />
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-sm truncate max-w-[120px] sm:max-w-none">
+              {user.robloxDisplayName || user.robloxUsername}
+            </span>
+            <RoleBadge role={user.role} />
+          </div>
+          {user.robloxDisplayName && (
+            <p className="text-xs text-muted-foreground/60 truncate">@{user.robloxUsername}</p>
+          )}
+          {(user.subroles?.length ?? 0) > 0 && (
+            <div className="flex items-center gap-1 mt-1 flex-wrap">
+              <SubroleBadge subrole={user.subroles[0]} />
+              {user.subroles.length > 1 && (
+                <span className="text-[10px] text-muted-foreground/60">+{user.subroles.length - 1}</span>
+              )}
+            </div>
+          )}
+          {user.discordUsername && (
+            <div className="flex items-center gap-1 mt-0.5">
+              <MessageSquare className="w-2.5 h-2.5 text-indigo-400 flex-shrink-0" />
+              <span className="text-[10px] text-muted-foreground/70 truncate">{user.discordUsername}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button
+            onClick={() => setExpanded(v => !v)}
+            className="p-1.5 text-muted-foreground/50 hover:text-muted-foreground rounded-lg hover:bg-muted/40 transition-colors"
+            title="Details"
+          >
+            {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+          {isAdmin && (
+            <>
+              <button
+                onClick={() => onEdit(user)}
+                className="p-1.5 text-muted-foreground/50 hover:text-primary rounded-lg hover:bg-primary/10 transition-colors"
+                title={t('users.editUser')}
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => onDelete(user.id)}
+                className="p-1.5 text-muted-foreground/30 hover:text-destructive rounded-lg hover:bg-destructive/10 transition-colors"
+                title={t('users.deleteMember')}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Expanded details */}
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+            className="overflow-hidden border-t border-border/40"
+          >
+            <div className="px-4 py-3 space-y-2.5 bg-muted/10">
+              {user.discordUsername && (
+                <div className="flex items-center gap-2 text-xs">
+                  <MessageSquare className="w-3 h-3 text-indigo-400 flex-shrink-0" />
+                  <span className="text-muted-foreground">{t('users.discordHandle')}:</span>
+                  <span className="font-medium">{user.discordUsername}</span>
+                </div>
+              )}
+              {(user.groups?.length ?? 0) > 0 && (
+                <div className="flex items-start gap-2 text-xs">
+                  <Users2 className="w-3 h-3 text-muted-foreground/60 flex-shrink-0 mt-0.5" />
+                  <span className="text-muted-foreground">{t('users.tableGroups')}:</span>
+                  <div className="flex flex-wrap gap-1">
+                    {user.groups.map(g => (
+                      <span key={g} className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[10px] border border-blue-500/20">{g}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {(user.subroles?.length ?? 0) > 1 && (
+                <div className="flex items-start gap-2 text-xs">
+                  <Palette className="w-3 h-3 text-muted-foreground/60 flex-shrink-0 mt-0.5" />
+                  <span className="text-muted-foreground">{t('users.tableSubroles')}:</span>
+                  <div className="flex flex-wrap gap-1">
+                    {user.subroles.map(sr => <SubroleBadge key={sr} subrole={sr} />)}
+                  </div>
+                </div>
+              )}
+              <div className="flex items-center gap-2 text-xs text-muted-foreground/50">
+                <span>{t('users.joinedOn')}: {joinedDate}</span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}
+
+/* ── Teams Management ─────────────────────────────────────────────────────── */
 
 function TeamsManagement() {
   const { data: teams, isLoading } = useListTeams();
@@ -81,7 +473,6 @@ function TeamsManagement() {
   const [newTeamName, setNewTeamName] = useState('');
   const [newTeamColor, setNewTeamColor] = useState(TEAM_COLORS[0]);
   const [newTeamDesc, setNewTeamDesc] = useState('');
-
   const [addMemberTeam, setAddMemberTeam] = useState<Team | null>(null);
   const [addMemberUserId, setAddMemberUserId] = useState('');
 
@@ -248,7 +639,6 @@ function TeamsManagement() {
         </div>
       )}
 
-      {/* Create team dialog */}
       <Dialog open={createDialogOpen} onOpenChange={(o) => { setCreateDialogOpen(o); if (!o) { setNewTeamName(''); setNewTeamDesc(''); setNewTeamColor(TEAM_COLORS[0]); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
@@ -289,12 +679,7 @@ function TeamsManagement() {
   );
 }
 
-// ── Groups Management Component ───────────────────────────────────────────────
-
-const GROUP_COLORS = [
-  '#f59e0b', '#ef4444', '#3b82f6', '#8b5cf6',
-  '#10b981', '#ec4899', '#14b8a6', '#f97316',
-];
+/* ── Groups Management ────────────────────────────────────────────────────── */
 
 type UserGroupMember = { id: number; username: string; displayName: string | null; avatarUrl: string | null };
 type UserGroup = { id: number; name: string; description: string | null; color: string; members: UserGroupMember[] };
@@ -484,16 +869,14 @@ function GroupsManagement() {
         </div>
       )}
 
-      {/* Create group dialog */}
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+      <Dialog open={createDialogOpen} onOpenChange={(o) => { setCreateDialogOpen(o); if (!o) { setNewGroupName(''); setNewGroupDesc(''); setNewGroupColor(GROUP_COLORS[0]); } }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Users2 className="w-4 h-4 text-amber-400" /> {t('users.newGroupTitle')}
+              <Users2 className="w-4 h-4 text-amber-400" /> {t('users.newGroup')}
             </DialogTitle>
           </DialogHeader>
-          <p className="text-xs text-muted-foreground -mt-1">{t('users.newGroupSubtitle')}</p>
-          <div className="space-y-3 pt-1">
+          <div className="space-y-4 pt-1">
             <div>
               <label className="text-sm font-medium mb-1.5 block">{t('users.groupName')} <span className="text-destructive">*</span></label>
               <Input placeholder={t('users.groupNamePlaceholder')} value={newGroupName} onChange={e => setNewGroupName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateGroup()} autoFocus />
@@ -522,172 +905,7 @@ function GroupsManagement() {
   );
 }
 
-// ── User Card Component ────────────────────────────────────────────────────────
-
-type UserListUser = {
-  id: number;
-  robloxUsername: string;
-  robloxDisplayName?: string | null;
-  robloxAvatarUrl?: string | null;
-  discordUsername?: string | null;
-  role: 'admin' | 'collaborator';
-  subroles: string[];
-  groups: string[];
-  createdAt: string;
-};
-
-function UserCard({
-  user,
-  index,
-  isAdmin,
-  onEdit,
-  onDelete,
-}: {
-  user: UserListUser;
-  index: number;
-  isAdmin: boolean;
-  onEdit: (user: UserListUser) => void;
-  onDelete: (id: number) => void;
-}) {
-  const { t } = useTranslation();
-  const [expanded, setExpanded] = useState(false);
-
-  const joinedDate = new Date(user.createdAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
-
-  return (
-    <motion.div
-      custom={index}
-      variants={cardVariants}
-      initial="hidden"
-      animate="show"
-      exit="exit"
-      className="bg-card border border-border/50 rounded-xl overflow-hidden hover:border-border/80 transition-colors"
-    >
-      <div className="flex items-center gap-3 p-3 sm:p-4">
-        {/* Avatar */}
-        <div className="flex-shrink-0">
-          {user.robloxAvatarUrl ? (
-            <img src={user.robloxAvatarUrl} alt="" className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl object-cover ring-1 ring-border/50 bg-muted" />
-          ) : (
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-sm ring-1 ring-border/50">
-              {user.robloxUsername.charAt(0).toUpperCase()}
-            </div>
-          )}
-        </div>
-
-        {/* Info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-sm truncate max-w-[120px] sm:max-w-none">
-              {user.robloxDisplayName || user.robloxUsername}
-            </span>
-            <RoleBadge role={user.role} />
-          </div>
-          {user.robloxDisplayName && (
-            <p className="text-xs text-muted-foreground/60 truncate">@{user.robloxUsername}</p>
-          )}
-          {/* Primary subrole */}
-          {user.subroles?.length > 0 && (
-            <div className="flex items-center gap-1 mt-1 flex-wrap">
-              <SubroleBadge subrole={user.subroles[0]} />
-              {user.subroles.length > 1 && (
-                <span className="text-[10px] text-muted-foreground/60">+{user.subroles.length - 1}</span>
-              )}
-            </div>
-          )}
-          {/* Discord inline */}
-          {user.discordUsername && (
-            <div className="flex items-center gap-1 mt-0.5">
-              <MessageSquare className="w-2.5 h-2.5 text-indigo-400 flex-shrink-0" />
-              <span className="text-[10px] text-muted-foreground/70 truncate">{user.discordUsername}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <button
-            onClick={() => setExpanded(v => !v)}
-            className="p-1.5 text-muted-foreground/50 hover:text-muted-foreground rounded-lg hover:bg-muted/40 transition-colors"
-            title="Details"
-          >
-            {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          </button>
-          {isAdmin && (
-            <>
-              <button
-                onClick={() => onEdit(user)}
-                className="p-1.5 text-muted-foreground/50 hover:text-primary rounded-lg hover:bg-primary/10 transition-colors"
-                title={t('users.editUser')}
-              >
-                <Edit2 className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => onDelete(user.id)}
-                className="p-1.5 text-muted-foreground/30 hover:text-destructive rounded-lg hover:bg-destructive/10 transition-colors"
-                title={t('users.deleteMember')}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Expanded details */}
-      <AnimatePresence initial={false}>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: 'easeInOut' }}
-            className="overflow-hidden border-t border-border/40"
-          >
-            <div className="px-4 py-3 space-y-2.5 bg-muted/10">
-              {/* Discord */}
-              {user.discordUsername && (
-                <div className="flex items-center gap-2 text-xs">
-                  <MessageSquare className="w-3 h-3 text-indigo-400 flex-shrink-0" />
-                  <span className="text-muted-foreground">{t('users.discordHandle')}:</span>
-                  <span className="font-medium">{user.discordUsername}</span>
-                </div>
-              )}
-              {/* Groups */}
-              {user.groups?.length > 0 && (
-                <div className="flex items-start gap-2 text-xs">
-                  <Users2 className="w-3 h-3 text-muted-foreground/60 flex-shrink-0 mt-0.5" />
-                  <span className="text-muted-foreground">{t('users.tableGroups')}:</span>
-                  <div className="flex flex-wrap gap-1">
-                    {user.groups.map(g => (
-                      <span key={g} className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 text-[10px] border border-blue-500/20">{g}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {/* All subroles */}
-              {user.subroles?.length > 1 && (
-                <div className="flex items-start gap-2 text-xs">
-                  <Palette className="w-3 h-3 text-muted-foreground/60 flex-shrink-0 mt-0.5" />
-                  <span className="text-muted-foreground">{t('users.tableSubroles')}:</span>
-                  <div className="flex flex-wrap gap-1">
-                    {user.subroles.map(sr => <SubroleBadge key={sr} subrole={sr} />)}
-                  </div>
-                </div>
-              )}
-              {/* Joined date */}
-              <div className="flex items-center gap-2 text-xs text-muted-foreground/50">
-                <span>{t('users.joinedOn')}: {joinedDate}</span>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
-  );
-}
-
-// ── Maintenance Settings Panel ────────────────────────────────────────────────
+/* ── Maintenance Settings ─────────────────────────────────────────────────── */
 
 function MaintenanceSettings() {
   const { t } = useTranslation();
@@ -728,7 +946,6 @@ function MaintenanceSettings() {
 
   return (
     <div className="space-y-5">
-      {/* Section header */}
       <div className="flex items-start gap-3">
         <div className="w-9 h-9 rounded-lg bg-amber-500/15 flex items-center justify-center flex-shrink-0">
           <Wrench className="w-4 h-4 text-amber-400" />
@@ -739,13 +956,8 @@ function MaintenanceSettings() {
         </div>
       </div>
 
-      {/* Toggle card */}
-      <Card className={cn(
-        "border transition-colors",
-        enabled ? "border-amber-500/30 bg-amber-500/5" : "border-border/50"
-      )}>
+      <Card className={cn("border transition-colors", enabled ? "border-amber-500/30 bg-amber-500/5" : "border-border/50")}>
         <CardContent className="p-5 space-y-5">
-          {/* Toggle row */}
           <div className="flex items-center justify-between gap-4">
             <div className="space-y-0.5">
               <div className="flex items-center gap-2">
@@ -753,23 +965,17 @@ function MaintenanceSettings() {
                 <span className="text-sm font-medium">{t('maintenance.toggle')}</span>
                 <span className={cn(
                   "text-[10px] px-2 py-0.5 rounded-full font-semibold border",
-                  enabled
-                    ? "bg-amber-500/20 text-amber-400 border-amber-500/40"
-                    : "bg-muted/50 text-muted-foreground border-border/50"
+                  enabled ? "bg-amber-500/20 text-amber-400 border-amber-500/40" : "bg-muted/50 text-muted-foreground border-border/50"
                 )}>
                   {enabled ? t('maintenance.enabled') : t('maintenance.disabled')}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">{t('maintenance.toggleDesc')}</p>
             </div>
-            {/* Custom toggle button */}
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => setEnabled(v => !v)}
-              className={cn(
-                "relative w-12 h-6 rounded-full transition-colors flex-shrink-0",
-                enabled ? "bg-amber-500" : "bg-muted"
-              )}
+              className={cn("relative w-12 h-6 rounded-full transition-colors flex-shrink-0", enabled ? "bg-amber-500" : "bg-muted")}
             >
               <motion.div
                 className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow"
@@ -779,11 +985,8 @@ function MaintenanceSettings() {
             </motion.button>
           </div>
 
-          {/* Message input */}
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">
-              {t('maintenance.messageLabel')}
-            </label>
+            <label className="text-xs font-medium text-muted-foreground">{t('maintenance.messageLabel')}</label>
             <Input
               placeholder={t('maintenance.messagePlaceholder')}
               value={message}
@@ -792,13 +995,10 @@ function MaintenanceSettings() {
             />
           </div>
 
-          {/* Save button */}
           <div className="flex items-center justify-between gap-3">
             <div className="text-xs text-muted-foreground/60">
               {status?.updatedAt && (
-                <span>
-                  {t('maintenance.lastUpdated')}: {new Date(status.updatedAt).toLocaleString()}
-                </span>
+                <span>{t('maintenance.lastUpdated')}: {new Date(status.updatedAt).toLocaleString()}</span>
               )}
             </div>
             <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
@@ -808,20 +1008,15 @@ function MaintenanceSettings() {
                 disabled={saving || (!isDirty && !saved)}
                 className={cn(saved && "bg-green-600 hover:bg-green-600")}
               >
-                {saving ? (
-                  <>{t('maintenance.saving')}</>
-                ) : saved ? (
-                  <><CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />{t('maintenance.saved')}</>
-                ) : (
-                  t('maintenance.save')
-                )}
+                {saving ? t('maintenance.saving') : saved
+                  ? <><CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />{t('maintenance.saved')}</>
+                  : t('maintenance.save')}
               </Button>
             </motion.div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Live preview when enabled */}
       {enabled && (
         <motion.div
           initial={{ opacity: 0, height: 0 }}
@@ -832,11 +1027,7 @@ function MaintenanceSettings() {
             <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-amber-300">{t('maintenance.adminBanner')}</p>
-              {message && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Message: "{message}"
-                </p>
-              )}
+              {message && <p className="text-xs text-muted-foreground mt-1">Message: "{message}"</p>}
             </div>
           </div>
         </motion.div>
@@ -845,7 +1036,7 @@ function MaintenanceSettings() {
   );
 }
 
-// ── Main Users Page ───────────────────────────────────────────────────────────
+/* ── Main Users Page ──────────────────────────────────────────────────────── */
 
 export default function Users() {
   const { data: users, isLoading } = useListUsers();
@@ -857,6 +1048,7 @@ export default function Users() {
   const { user: currentUser } = useAuth();
   const isAdmin = currentUser?.role === 'admin';
 
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [selectedUser, setSelectedUser] = useState<number | null>(null);
   const [role, setRole] = useState<'admin' | 'collaborator'>('collaborator');
   const [subroles, setSubroles] = useState<string[]>([]);
@@ -872,11 +1064,21 @@ export default function Users() {
   const [addError, setAddError] = useState('');
   const [addLoading, setAddLoading] = useState(false);
 
-  type RobloxPreview = { robloxId: string; username: string; displayName: string | null; avatarUrl: string | null; isBanned: boolean };
+  type RobloxPreview = {
+    robloxId: string;
+    username: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+    isBanned: boolean;
+  };
   const [preview, setPreview] = useState<RobloxPreview | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState('');
   const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [search, setSearch] = useState('');
+  const [filterRole, setFilterRole] = useState<'all' | 'admin' | 'collaborator'>('all');
+  const [filterSubrole, setFilterSubrole] = useState('');
 
   useEffect(() => {
     if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
@@ -893,7 +1095,7 @@ export default function Users() {
       finally { setPreviewLoading(false); }
     }, 600);
     return () => { if (previewTimerRef.current) clearTimeout(previewTimerRef.current); };
-  }, [newRobloxId]);
+  }, [newRobloxId, t]);
 
   const resetAddDialog = () => {
     setNewRobloxId(''); setNewRole('collaborator'); setNewDiscord(''); setAddError('');
@@ -936,8 +1138,9 @@ export default function Users() {
       invalidate();
       setAddDialogOpen(false);
       resetAddDialog();
-    } catch (err: any) {
-      setAddError(err?.response?.data?.error ?? err?.message ?? t('users.failedAddUser'));
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : t('users.failedAddUser');
+      setAddError(message);
     } finally { setAddLoading(false); }
   };
 
@@ -945,23 +1148,18 @@ export default function Users() {
   const toggleGroup = (g: string) => setGroups(prev => prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g]);
 
   const addCustomSubrole = () => {
-    const v = customSubrole.trim();
+    const v = customSubrole.trim().slice(0, 50);
     if (v && !subroles.includes(v)) setSubroles(prev => [...prev, v]);
     setCustomSubrole('');
   };
 
   const addCustomGroup = () => {
-    const v = customGroup.trim();
+    const v = customGroup.trim().slice(0, 50);
     if (v && !groups.includes(v)) setGroups(prev => [...prev, v]);
     setCustomGroup('');
   };
 
-  const [search, setSearch] = useState('');
-  const [filterRole, setFilterRole] = useState<'all' | 'admin' | 'collaborator'>('all');
-  const [filterSubrole, setFilterSubrole] = useState('');
-
   const editingUser = users?.find(u => u.id === selectedUser);
-
   const adminCount = users?.filter(u => u.role === 'admin').length ?? 0;
   const collaboratorCount = users?.filter(u => u.role === 'collaborator').length ?? 0;
 
@@ -978,11 +1176,13 @@ export default function Users() {
     return true;
   });
 
+  const isFiltering = !!(search || filterRole !== 'all' || filterSubrole);
+
   return (
     <PageTransition>
       {/* Header */}
       <motion.div
-        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6"
+        className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6"
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35 }}
@@ -993,7 +1193,7 @@ export default function Users() {
             <p className="text-sm text-muted-foreground mt-1">
               {users.length} {users.length !== 1 ? t('users.totalMembersLabelPlural') : t('users.totalMembersLabel')}
               {' · '}{adminCount} admin{adminCount !== 1 ? 's' : ''}
-              {' · '}{collaboratorCount} {collaboratorCount !== 1 ? t('users.collaboratorLabel') : t('users.collaboratorLabel')}
+              {' · '}{collaboratorCount} {t('users.collaboratorLabel').toLowerCase()}
             </p>
           )}
         </div>
@@ -1014,36 +1214,39 @@ export default function Users() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05, type: 'spring', stiffness: 200, damping: 22 }}
         >
-          <Card className="border-border/50">
+          <Card className="border-border/50 overflow-hidden">
+            <div className="h-0.5 bg-gradient-to-r from-muted to-muted/30" />
             <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-muted/60 flex items-center justify-center flex-shrink-0">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-muted/60 flex items-center justify-center flex-shrink-0">
                 <Users2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
               </div>
               <div>
-                <div className="text-xl sm:text-2xl font-bold leading-none">{users.length}</div>
-                <div className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">Total</div>
+                <div className="text-2xl sm:text-3xl font-bold leading-none">{users.length}</div>
+                <div className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 font-medium uppercase tracking-wide">Total</div>
               </div>
             </CardContent>
           </Card>
-          <Card className="border-red-500/20 bg-red-500/5">
+          <Card className="border-red-500/20 bg-red-500/5 overflow-hidden">
+            <div className="h-0.5 bg-gradient-to-r from-red-500 to-orange-500" />
             <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-red-500/10 flex items-center justify-center flex-shrink-0">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-red-500/10 flex items-center justify-center flex-shrink-0">
                 <Shield className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-400" />
               </div>
               <div>
-                <div className="text-xl sm:text-2xl font-bold leading-none text-red-400">{adminCount}</div>
-                <div className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">Admins</div>
+                <div className="text-2xl sm:text-3xl font-bold leading-none text-red-400">{adminCount}</div>
+                <div className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 font-medium uppercase tracking-wide">Admin</div>
               </div>
             </CardContent>
           </Card>
-          <Card className="border-blue-500/20 bg-blue-500/5">
+          <Card className="border-blue-500/20 bg-blue-500/5 overflow-hidden">
+            <div className="h-0.5 bg-gradient-to-r from-blue-500 to-cyan-400" />
             <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-blue-500/10 flex items-center justify-center flex-shrink-0">
                 <Users2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-400" />
               </div>
               <div>
-                <div className="text-xl sm:text-2xl font-bold leading-none text-blue-400">{collaboratorCount}</div>
-                <div className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">Collab.</div>
+                <div className="text-2xl sm:text-3xl font-bold leading-none text-blue-400">{collaboratorCount}</div>
+                <div className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 font-medium uppercase tracking-wide">Collab.</div>
               </div>
             </CardContent>
           </Card>
@@ -1074,92 +1277,126 @@ export default function Users() {
             transition={{ delay: 0.1, type: 'spring', stiffness: 200, damping: 22 }}
             className="space-y-3"
           >
-            {/* Search + filter bar */}
+            {/* Search + filter + view toggle */}
             {!isLoading && (users?.length ?? 0) > 0 && (
-              <div className="flex flex-col sm:flex-row gap-2">
-                {/* Search input */}
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50 pointer-events-none" />
-                  <Input
-                    placeholder={t('users.searchPlaceholder')}
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    className="pl-9 h-9 text-sm bg-muted/20"
-                  />
-                  {search && (
-                    <button
-                      onClick={() => setSearch('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground"
+              <div className="space-y-2">
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/50 pointer-events-none" />
+                    <Input
+                      placeholder={t('users.searchPlaceholder')}
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                      className="pl-9 h-9 text-sm bg-muted/20"
+                    />
+                    {search && (
+                      <button
+                        onClick={() => setSearch('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {(['all', 'admin', 'collaborator'] as const).map(r => (
+                      <motion.button
+                        key={r}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => setFilterRole(r)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors",
+                          filterRole === r
+                            ? r === 'admin'
+                              ? 'bg-red-500/20 text-red-400 border-red-500/40'
+                              : r === 'collaborator'
+                                ? 'bg-blue-500/20 text-blue-400 border-blue-500/40'
+                                : 'bg-muted text-foreground border-border'
+                            : 'text-muted-foreground border-border/40 hover:border-border hover:text-foreground'
+                        )}
+                      >
+                        {r === 'all' ? t('users.filterAll') : r === 'admin' ? 'Admin' : t('users.collaboratorLabel')}
+                      </motion.button>
+                    ))}
+
+                    {/* View mode toggle */}
+                    <div className="flex items-center bg-muted/30 rounded-lg p-0.5 border border-border/40 ml-1">
+                      <button
+                        onClick={() => setViewMode('grid')}
+                        className={cn(
+                          "p-1.5 rounded-md transition-colors",
+                          viewMode === 'grid' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'
+                        )}
+                        title="Grid view"
+                      >
+                        <LayoutGrid className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setViewMode('list')}
+                        className={cn(
+                          "p-1.5 rounded-md transition-colors",
+                          viewMode === 'list' ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'
+                        )}
+                        title="List view"
+                      >
+                        <List className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Subrole filter chips */}
+                <div className="flex flex-wrap gap-1.5">
+                  {SUBROLE_OPTIONS.map(sr => (
+                    <motion.button
+                      key={sr}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setFilterSubrole(filterSubrole === sr ? '' : sr)}
+                      className={cn(
+                        "text-[11px] px-2 py-0.5 rounded-full border transition-colors",
+                        filterSubrole === sr
+                          ? getSubroleClasses(sr)
+                          : 'border-border/40 text-muted-foreground/60 hover:border-border hover:text-muted-foreground'
+                      )}
                     >
-                      <X className="w-3.5 h-3.5" />
+                      {sr}
+                    </motion.button>
+                  ))}
+                  {filterSubrole && (
+                    <button
+                      onClick={() => setFilterSubrole('')}
+                      className="text-[11px] px-2 py-0.5 rounded-full border border-border/40 text-muted-foreground/50 hover:text-muted-foreground flex items-center gap-1"
+                    >
+                      <X className="w-2.5 h-2.5" /> {t('users.clearFilter')}
                     </button>
                   )}
                 </div>
-
-                {/* Role filter pills */}
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  {(['all', 'admin', 'collaborator'] as const).map(r => (
-                    <motion.button
-                      key={r}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setFilterRole(r)}
-                      className={cn(
-                        "px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors",
-                        filterRole === r
-                          ? r === 'admin'
-                            ? 'bg-red-500/20 text-red-400 border-red-500/40'
-                            : r === 'collaborator'
-                              ? 'bg-blue-500/20 text-blue-400 border-blue-500/40'
-                              : 'bg-muted text-foreground border-border'
-                          : 'text-muted-foreground border-border/40 hover:border-border hover:text-foreground'
-                      )}
-                    >
-                      {r === 'all' ? t('users.filterAll') : r === 'admin' ? 'Admin' : t('users.collaboratorLabel')}
-                    </motion.button>
-                  ))}
-                </div>
               </div>
             )}
 
-            {/* Subrole filter chips */}
-            {!isLoading && (users?.length ?? 0) > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {SUBROLE_OPTIONS.map(sr => (
-                  <motion.button
-                    key={sr}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setFilterSubrole(filterSubrole === sr ? '' : sr)}
-                    className={cn(
-                      "text-[11px] px-2 py-0.5 rounded-full border transition-colors",
-                      filterSubrole === sr
-                        ? getSubroleClasses(sr)
-                        : 'border-border/40 text-muted-foreground/60 hover:border-border hover:text-muted-foreground'
-                    )}
-                  >
-                    {sr}
-                  </motion.button>
-                ))}
-                {filterSubrole && (
-                  <button
-                    onClick={() => setFilterSubrole('')}
-                    className="text-[11px] px-2 py-0.5 rounded-full border border-border/40 text-muted-foreground/50 hover:text-muted-foreground flex items-center gap-1"
-                  >
-                    <X className="w-2.5 h-2.5" /> {t('users.clearFilter')}
-                  </button>
-                )}
-              </div>
-            )}
-
-            {/* Results count when filtering */}
-            {!isLoading && (search || filterRole !== 'all' || filterSubrole) && (
+            {isFiltering && !isLoading && (
               <p className="text-xs text-muted-foreground">
                 {filteredUsers?.length ?? 0} {t('users.resultsFound')}
+                {' · '}
+                <button
+                  onClick={() => { setSearch(''); setFilterRole('all'); setFilterSubrole(''); }}
+                  className="text-primary hover:underline"
+                >
+                  {t('users.clearFilters')}
+                </button>
               </p>
             )}
 
             {/* User list */}
             {isLoading ? (
-              [1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)
+              viewMode === 'grid' ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-52 rounded-2xl" />)}
+                </div>
+              ) : (
+                [1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)
+              )
             ) : users?.length === 0 ? (
               <div className="text-center py-16 text-muted-foreground border border-dashed border-border/50 rounded-xl">
                 <Users2 className="w-10 h-10 mx-auto mb-3 opacity-30" />
@@ -1176,18 +1413,35 @@ export default function Users() {
                   {t('users.clearFilters')}
                 </button>
               </div>
+            ) : viewMode === 'grid' ? (
+              <AnimatePresence initial={false}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {filteredUsers?.map((user, i) => (
+                    <UserCardGrid
+                      key={user.id}
+                      user={user as UserListUser}
+                      index={i}
+                      isAdmin={isAdmin}
+                      onEdit={openEdit}
+                      onDelete={handleDelete}
+                    />
+                  ))}
+                </div>
+              </AnimatePresence>
             ) : (
               <AnimatePresence initial={false}>
-                {filteredUsers?.map((user, i) => (
-                  <UserCard
-                    key={user.id}
-                    user={user}
-                    index={i}
-                    isAdmin={isAdmin}
-                    onEdit={openEdit}
-                    onDelete={handleDelete}
-                  />
-                ))}
+                <div className="space-y-2">
+                  {filteredUsers?.map((user, i) => (
+                    <UserCardList
+                      key={user.id}
+                      user={user as UserListUser}
+                      index={i}
+                      isAdmin={isAdmin}
+                      onEdit={openEdit}
+                      onDelete={handleDelete}
+                    />
+                  ))}
+                </div>
               </AnimatePresence>
             )}
           </motion.div>
@@ -1227,7 +1481,6 @@ export default function Users() {
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-1">
-              {/* Roblox ID */}
               <div>
                 <label className="text-sm font-medium mb-1.5 block">
                   {t('users.robloxUserId')} <span className="text-destructive">*</span>
@@ -1236,7 +1489,7 @@ export default function Users() {
                 <Input
                   placeholder="e.g. 454458772"
                   value={newRobloxId}
-                  onChange={e => setNewRobloxId(e.target.value.replace(/\D/g, ''))}
+                  onChange={e => setNewRobloxId(e.target.value.replace(/\D/g, '').slice(0, 20))}
                   onKeyDown={e => e.key === 'Enter' && handleAddUser()}
                   autoFocus
                 />
@@ -1245,7 +1498,6 @@ export default function Users() {
                 </p>
               </div>
 
-              {/* Roblox preview */}
               <AnimatePresence>
                 {newRobloxId.length >= 4 && (
                   <motion.div
@@ -1300,7 +1552,6 @@ export default function Users() {
                 )}
               </AnimatePresence>
 
-              {/* Role */}
               <div>
                 <label className="text-sm font-medium mb-1.5 block">{t('users.role')}</label>
                 <Select value={newRole} onValueChange={(v: 'admin' | 'collaborator') => setNewRole(v)}>
@@ -1316,7 +1567,6 @@ export default function Users() {
                 </Select>
               </div>
 
-              {/* Discord */}
               <div>
                 <label className="text-sm font-medium mb-1.5 block">
                   {t('users.discord')}
@@ -1327,7 +1577,7 @@ export default function Users() {
                   <Input
                     placeholder={t('users.discordPlaceholder')}
                     value={newDiscord}
-                    onChange={e => setNewDiscord(e.target.value)}
+                    onChange={e => setNewDiscord(e.target.value.slice(0, 32))}
                     className="pl-9"
                   />
                 </div>
@@ -1354,7 +1604,6 @@ export default function Users() {
               <DialogTitle>{t('users.editTitle')} {editingUser?.robloxDisplayName || editingUser?.robloxUsername}</DialogTitle>
             </DialogHeader>
             <div className="space-y-5 pt-2">
-              {/* Role */}
               <div>
                 <label className="text-sm font-medium mb-2 block">{t('users.role')}</label>
                 <Select value={role} onValueChange={(v: 'admin' | 'collaborator') => setRole(v)}>
@@ -1370,7 +1619,6 @@ export default function Users() {
                 </Select>
               </div>
 
-              {/* Discord */}
               <div>
                 <label className="text-sm font-medium mb-2 block">{t('users.discord')}</label>
                 <div className="relative">
@@ -1378,13 +1626,12 @@ export default function Users() {
                   <Input
                     placeholder={t('users.discordPlaceholder')}
                     value={discordUsername}
-                    onChange={e => setDiscordUsername(e.target.value)}
+                    onChange={e => setDiscordUsername(e.target.value.slice(0, 32))}
                     className="pl-9"
                   />
                 </div>
               </div>
 
-              {/* Subroles */}
               <div>
                 <label className="text-sm font-medium mb-2 block">{t('users.subroles')}</label>
                 <div className="flex flex-wrap gap-2 mb-2">
@@ -1403,8 +1650,13 @@ export default function Users() {
                   ))}
                 </div>
                 <div className="flex gap-2">
-                  <Input placeholder={t('users.customSubrole')} value={customSubrole} onChange={e => setCustomSubrole(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCustomSubrole())} className="h-8 text-sm" />
+                  <Input
+                    placeholder={t('users.customSubrole')}
+                    value={customSubrole}
+                    onChange={e => setCustomSubrole(e.target.value.slice(0, 50))}
+                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCustomSubrole())}
+                    className="h-8 text-sm"
+                  />
                   <Button size="sm" variant="outline" onClick={addCustomSubrole} className="h-8">{t('common.add')}</Button>
                 </div>
                 {subroles.length > 0 && (
@@ -1423,7 +1675,6 @@ export default function Users() {
                 )}
               </div>
 
-              {/* Groups */}
               <div>
                 <label className="text-sm font-medium mb-2 block">{t('users.groups')}</label>
                 <div className="flex flex-wrap gap-2 mb-2">
@@ -1442,8 +1693,13 @@ export default function Users() {
                   ))}
                 </div>
                 <div className="flex gap-2">
-                  <Input placeholder={t('users.customGroup')} value={customGroup} onChange={e => setCustomGroup(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCustomGroup())} className="h-8 text-sm" />
+                  <Input
+                    placeholder={t('users.customGroup')}
+                    value={customGroup}
+                    onChange={e => setCustomGroup(e.target.value.slice(0, 50))}
+                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCustomGroup())}
+                    className="h-8 text-sm"
+                  />
                   <Button size="sm" variant="outline" onClick={addCustomGroup} className="h-8">{t('common.add')}</Button>
                 </div>
                 {groups.length > 0 && (

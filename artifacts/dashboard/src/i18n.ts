@@ -13,6 +13,8 @@ const resources = {
         settings: "Settings",
         logout: "Logout",
         privacy: "Privacy Policy",
+        theme: "Theme",
+        selectTheme: "Select theme",
       },
       sidebar: {
         admin: "Admin",
@@ -261,6 +263,12 @@ const resources = {
         noDiscord: "—",
         totalMembersLabel: "member",
         totalMembersLabelPlural: "members",
+        searchPlaceholder: "Search by name or Discord…",
+        filterAll: "All",
+        noResults: "No members match your filters.",
+        clearFilter: "Clear",
+        clearFilters: "Clear filters",
+        resultsFound: "result(s) found",
       },
       common: {
         loading: "Loading...",
@@ -341,6 +349,8 @@ const resources = {
         settings: "Paramètres",
         logout: "Se Déconnecter",
         privacy: "Politique de confidentialité",
+        theme: "Thème",
+        selectTheme: "Choisir un thème",
       },
       sidebar: {
         admin: "Admin",
@@ -589,6 +599,12 @@ const resources = {
         noDiscord: "—",
         totalMembersLabel: "membre",
         totalMembersLabelPlural: "membres",
+        searchPlaceholder: "Rechercher par nom ou Discord…",
+        filterAll: "Tous",
+        noResults: "Aucun membre ne correspond aux filtres.",
+        clearFilter: "Effacer",
+        clearFilters: "Effacer les filtres",
+        resultsFound: "résultat(s) trouvé(s)",
       },
       common: {
         loading: "Chargement...",

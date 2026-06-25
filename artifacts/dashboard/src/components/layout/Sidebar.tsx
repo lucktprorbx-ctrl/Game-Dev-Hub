@@ -1,10 +1,11 @@
 import { Link, useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme, THEMES } from '@/contexts/ThemeContext';
 import { useTranslation } from 'react-i18next';
-import { 
-  LayoutDashboard, 
-  CalendarDays, 
+import {
+  LayoutDashboard,
+  CalendarDays,
   Users,
   LogOut,
   Gamepad2,
@@ -14,10 +15,12 @@ import {
   FileText,
   ChevronRight,
   Settings,
+  Palette,
 } from 'lucide-react';
 import { useLogout } from '@workspace/api-client-react';
 import { getSubroleClasses, getSubroleDot } from '@/lib/role-colors';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from 'react';
 
 interface SidebarProps {
   open?: boolean;
@@ -27,8 +30,10 @@ interface SidebarProps {
 export function Sidebar({ open = false, onClose }: SidebarProps) {
   const [location] = useLocation();
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const logout = useLogout();
+  const { theme, setTheme, themes } = useTheme();
+  const [themeOpen, setThemeOpen] = useState(false);
 
   const isAdmin = user?.role === 'admin';
 
@@ -79,7 +84,7 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
             <X className="w-4 h-4" />
           </button>
         </motion.div>
-        
+
         {/* Navigation */}
         <nav className="flex-1 py-4 sm:py-5 px-3 flex flex-col gap-0.5 overflow-y-auto">
           {visibleItems.map((item, i) => {
@@ -124,6 +129,86 @@ export function Sidebar({ open = false, onClose }: SidebarProps) {
               </motion.div>
             );
           })}
+
+          {/* Theme picker — in nav area */}
+          <motion.div
+            initial={{ opacity: 0, x: -12 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: visibleItems.length * 0.05 + 0.15, duration: 0.3, ease: 'easeOut' }}
+            className="mt-2"
+          >
+            <button
+              onClick={() => setThemeOpen(v => !v)}
+              className={cn(
+                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer select-none transition-colors",
+                themeOpen
+                  ? "text-sidebar-foreground bg-muted/20"
+                  : "text-muted-foreground hover:text-sidebar-foreground hover:bg-muted/20"
+              )}
+            >
+              <Palette className="h-4 w-4 flex-shrink-0" />
+              <span className="flex-1 text-left">{t('nav.theme')}</span>
+              <span
+                className="w-3 h-3 rounded-full flex-shrink-0"
+                style={{ backgroundColor: themes.find(th => th.id === theme)?.primary }}
+              />
+            </button>
+
+            <AnimatePresence>
+              {themeOpen && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2, ease: 'easeInOut' }}
+                  className="overflow-hidden"
+                >
+                  <div className="mx-3 mt-1.5 mb-1 p-2.5 rounded-lg bg-muted/10 border border-border/40 space-y-1.5">
+                    <p className="text-[10px] font-medium text-muted-foreground/50 uppercase tracking-wide px-1 mb-2">
+                      {t('nav.selectTheme')}
+                    </p>
+                    {themes.map(th => (
+                      <motion.button
+                        key={th.id}
+                        whileHover={{ x: 2 }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => setTheme(th.id)}
+                        className={cn(
+                          "w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs transition-colors",
+                          theme === th.id
+                            ? "bg-muted/40 text-foreground"
+                            : "text-muted-foreground hover:text-sidebar-foreground hover:bg-muted/20"
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            "w-4 h-4 rounded-full flex-shrink-0 ring-2 transition-all",
+                            theme === th.id ? "ring-offset-1 ring-offset-sidebar scale-110" : "ring-transparent"
+                          )}
+                          style={{
+                            backgroundColor: th.primary,
+                            ringColor: th.primary,
+                          }}
+                        />
+                        <span className="flex-1 text-left font-medium">
+                          {i18n.language === 'fr' ? th.nameFr : th.nameEn}
+                        </span>
+                        {theme === th.id && (
+                          <motion.span
+                            layoutId="theme-check"
+                            className="text-[10px] font-semibold uppercase tracking-wide"
+                            style={{ color: th.primary }}
+                          >
+                            ✓
+                          </motion.span>
+                        )}
+                      </motion.button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
         </nav>
 
         {/* Bottom section */}
